@@ -52,7 +52,7 @@ export default function CompleteScreen() {
         styles.container,
         {
           backgroundColor: colors.background,
-          paddingTop: insets.top + 40,
+          paddingTop: Math.max(insets.top + 40, 72),
           paddingBottom: Math.max(insets.bottom, 32),
         },
       ]}

@@ -13,7 +13,7 @@ export default function JourneyScreen() {
     <View
       style={[
         styles.container,
-        { backgroundColor: colors.background, paddingTop: insets.top + 20 },
+        { backgroundColor: colors.background, paddingTop: Math.max(insets.top + 20, 60) },
       ]}
     >
       <Text

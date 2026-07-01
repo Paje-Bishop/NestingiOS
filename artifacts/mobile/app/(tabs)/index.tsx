@@ -380,7 +380,7 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16),
+            paddingTop: Math.max(insets.top + 16, Platform.OS === "web" ? 67 : 52),
             paddingBottom: tabBarHeight + 24,
           },
         ]}

@@ -17,7 +17,7 @@ export default function WelcomeScreen() {
         styles.container,
         {
           backgroundColor: colors.background,
-          paddingTop: insets.top + 24,
+          paddingTop: Math.max(insets.top + 24, 56),
           paddingBottom: Math.max(insets.bottom, 32),
         },
       ]}

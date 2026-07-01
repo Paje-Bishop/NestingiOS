@@ -45,7 +45,7 @@ export function OnboardingLayout({
   const content = (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Top nav */}
-      <View style={[styles.topNav, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.topNav, { paddingTop: Math.max(insets.top + 8, 48) }]}>
         <View style={styles.navLeft}>
           {showBack && (
             <TouchableOpacity
