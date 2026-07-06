@@ -15,7 +15,11 @@ export default function CreateOrJoinScreen() {
   const [selected, setSelected] = useState<"create" | "join" | null>(null);
 
   function handleContinue() {
-    router.push("/onboarding/phone");
+    if (selected === "join") {
+      router.push("/onboarding/join-code");
+    } else {
+      router.push("/onboarding/phone");
+    }
   }
 
   return (
@@ -50,7 +54,7 @@ export default function CreateOrJoinScreen() {
         />
         <OptionCard
           label="Join a pregnancy"
-          sublabel="Accept an invite from someone who's already started"
+          sublabel="Enter an invite code you received"
           selected={selected === "join"}
           onPress={() => setSelected("join")}
           icon={

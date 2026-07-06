@@ -1,5 +1,4 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React from "react";
 import {
   Platform,
@@ -11,39 +10,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useGetMe } from "@workspace/api-client-react";
 import { fonts } from "@/constants/fonts";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const MOCK_WEEK = 18;
-const MOCK_NAME = "Sarah";
-const MOCK_PREGNANCY_NAME = "Baby Harper";
-
-const SHARED_DECISIONS = [
-  {
-    id: "1",
-    icon: "car" as const,
-    title: "Infant car seat",
-    status: "Waiting on Joe",
-    iconSet: "feather" as const,
-  },
-  {
-    id: "2",
-    icon: "home" as const,
-    title: "Hospital bag checklist",
-    status: "3 opinions in",
-    iconSet: "feather" as const,
-  },
-  {
-    id: "3",
-    icon: "package" as const,
-    title: "Nursery furniture",
-    status: "Waiting on you",
-    iconSet: "feather" as const,
-  },
-];
+function calculateWeek(dueDate: string | null | undefined): number {
+  if (!dueDate) return 18;
+  const due = new Date(dueDate);
+  const now = new Date();
+  const daysLeft = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(1, Math.min(42, 40 - Math.round(daysLeft / 7)));
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -233,54 +213,6 @@ function TodayFocusCard() {
   );
 }
 
-interface DecisionCardProps {
-  icon: string;
-  iconSet: "feather" | "ionicons";
-  title: string;
-  status: string;
-}
-
-function DecisionCard({ icon, title, status }: DecisionCardProps) {
-  const colors = useColors();
-  return (
-    <TouchableOpacity
-      activeOpacity={0.75}
-      style={[
-        styles.decisionCard,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
-      <View
-        style={[
-          styles.decisionIcon,
-          { backgroundColor: colors.secondary },
-        ]}
-      >
-        <Feather name={icon as any} size={16} color={colors.mutedForeground} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[
-            styles.decisionTitle,
-            { color: colors.foreground, fontFamily: fonts.sansMedium },
-          ]}
-        >
-          {title}
-        </Text>
-        <Text
-          style={[
-            styles.decisionStatus,
-            { color: colors.mutedForeground, fontFamily: fonts.sansRegular },
-          ]}
-        >
-          {status}
-        </Text>
-      </View>
-      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-    </TouchableOpacity>
-  );
-}
-
 function ProgressCard() {
   const colors = useColors();
   return (
@@ -321,15 +253,7 @@ function ProgressCard() {
           { color: colors.greenCardForeground, fontFamily: fonts.sansMedium },
         ]}
       >
-        Joe finished comparing car seats
-      </Text>
-      <Text
-        style={[
-          styles.progressSub,
-          { color: colors.greenCardForeground, fontFamily: fonts.sansRegular },
-        ]}
-      >
-        3 tasks this week
+        You're all caught up this week
       </Text>
     </View>
   );
@@ -364,11 +288,18 @@ function CaptureWeekRow() {
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { userData } = useApp();
+  const { currentPregnancyId } = useApp();
 
-  const displayName = userData?.userName ?? MOCK_NAME;
-  const pregnancyName = userData?.pregnancyName ?? MOCK_PREGNANCY_NAME;
-  const currentWeek = userData?.currentWeek ?? MOCK_WEEK;
+  const { data: meData } = useGetMe();
+
+  const person = meData?.person;
+  const pregnancies = meData?.pregnancies ?? [];
+  const currentPregnancy =
+    pregnancies.find((p) => p.id === currentPregnancyId) ?? pregnancies[0];
+
+  const displayName = person?.displayName ?? "Friend";
+  const pregnancyName = currentPregnancy?.name ?? "Baby";
+  const currentWeek = calculateWeek(currentPregnancy?.dueDate);
   const showBabyComing = currentWeek >= 30;
 
   const tabBarHeight = Platform.OS === "web" ? 84 : 80;
@@ -386,74 +317,34 @@ export default function HomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <HomeHeader
           name={displayName}
           pregnancyName={pregnancyName}
           week={currentWeek}
         />
 
-        {/* This week section */}
         <View style={styles.section}>
           <WeekCard week={currentWeek} />
           <TodayFocusCard />
         </View>
 
-        {/* Together section */}
         <View style={styles.section}>
           <SectionTitle label="Together" />
-
-          {/* Collaborative acknowledgment */}
           <Text
             style={[
               styles.collaborativeNote,
               { color: colors.mutedForeground, fontFamily: fonts.sansRegular },
             ]}
           >
-            Everyone's caught up this week
+            {pregnancies.length > 1
+              ? `You're in ${pregnancies.length} pregnancies`
+              : "Everyone's caught up this week"}
           </Text>
-
-          {/* Shared decisions */}
-          <View style={styles.decisionsBlock}>
-            <View style={styles.decisionsHeader}>
-              <Text
-                style={[
-                  styles.decisionsTitle,
-                  { color: colors.foreground, fontFamily: fonts.sansSemiBold },
-                ]}
-              >
-                Shared decisions
-              </Text>
-              <TouchableOpacity activeOpacity={0.65}>
-                <Text
-                  style={[
-                    styles.viewAll,
-                    { color: colors.primary, fontFamily: fonts.sansMedium },
-                  ]}
-                >
-                  View all
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {SHARED_DECISIONS.map((d) => (
-              <DecisionCard
-                key={d.id}
-                icon={d.icon}
-                iconSet={d.iconSet}
-                title={d.title}
-                status={d.status}
-              />
-            ))}
-          </View>
-
-          {/* Progress */}
           <ProgressCard />
         </View>
 
-        {/* Capture this week */}
         <CaptureWeekRow />
 
-        {/* Is the baby coming? — week 30+ only */}
         {showBabyComing && (
           <TouchableOpacity
             activeOpacity={0.65}
@@ -573,43 +464,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 4,
   },
-  decisionsBlock: {
-    gap: 8,
-  },
-  decisionsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  decisionsTitle: {
-    fontSize: 16,
-  },
-  viewAll: {
-    fontSize: 14,
-  },
-  decisionCard: {
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-  },
-  decisionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  decisionTitle: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  decisionStatus: {
-    fontSize: 12,
-  },
   progressCard: {
     borderRadius: 20,
     padding: 18,
@@ -632,10 +486,6 @@ const styles = StyleSheet.create({
   progressMain: {
     fontSize: 15,
     lineHeight: 21,
-  },
-  progressSub: {
-    fontSize: 13,
-    opacity: 0.75,
   },
   captureRow: {
     flexDirection: "row",

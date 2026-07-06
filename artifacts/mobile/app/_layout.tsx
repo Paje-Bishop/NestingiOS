@@ -1,5 +1,5 @@
 import {
-  DmSerifDisplay_400Regular,
+  DMSerifDisplay_400Regular,
   useFonts as useDmSerifFonts,
 } from "@expo-google-fonts/dm-serif-display";
 import {
@@ -24,6 +24,10 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "http://localhost:80";
+
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -43,7 +47,7 @@ export default function RootLayout() {
   });
 
   const [serifLoaded, serifError] = useDmSerifFonts({
-    DmSerifDisplay_400Regular,
+    DMSerifDisplay_400Regular,
   });
 
   const fontsLoaded = interLoaded && serifLoaded;
@@ -63,7 +67,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
-              <AppProvider>
+              <AppProvider apiBaseUrl={API_BASE_URL}>
                 <RootLayoutNav />
               </AppProvider>
             </KeyboardProvider>

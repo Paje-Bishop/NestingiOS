@@ -2,21 +2,31 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Nest API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication and session management
+  - name: persons
+    description: Person profile management
+  - name: pregnancies
+    description: Pregnancy management
+  - name: invitations
+    description: Invitation management
+  - name: analytics
+    description: Event tracking
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +34,736 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/send-code:
+    post:
+      operationId: sendVerificationCode
+      tags: [auth]
+      summary: Send a phone verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneInput"
+      responses:
+        "200":
+          description: Code sent (stubbed in development)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationSession"
+        "400":
+          description: Invalid phone number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/verify-code:
+    post:
+      operationId: verifyCode
+      tags: [auth]
+      summary: Verify phone code and create or log in a person
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CodeVerification"
+      responses:
+        "200":
+          description: Verified — returns session token and person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Invalid or expired code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated person and their pregnancies
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current person with pregnancies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /persons/me:
+    patch:
+      operationId: updateMe
+      tags: [persons]
+      summary: Update the current person's profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonUpdate"
+      responses:
+        "200":
+          description: Updated person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/mine:
+    get:
+      operationId: listMyPregnancies
+      tags: [pregnancies]
+      summary: List pregnancies the current person is a member of
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of pregnancy summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PregnancySummary"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies:
+    post:
+      operationId: createPregnancy
+      tags: [pregnancies]
+      summary: Create a new pregnancy and initial membership
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PregnancyInput"
+      responses:
+        "201":
+          description: Created pregnancy and membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PregnancyWithMembership"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{id}:
+    get:
+      operationId: getPregnancy
+      tags: [pregnancies]
+      summary: Get a pregnancy with members
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pregnancy detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PregnancyDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Pregnancy not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updatePregnancy
+      tags: [pregnancies]
+      summary: Update a pregnancy's name or due date
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PregnancyUpdate"
+      responses:
+        "200":
+          description: Updated pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pregnancy"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/invitations:
+    post:
+      operationId: createInvitation
+      tags: [invitations]
+      summary: Create an invitation for a pregnancy
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationInput"
+      responses:
+        "201":
+          description: Created invitation with shareable link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationWithLink"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invitations/{code}:
+    get:
+      operationId: getInvitation
+      tags: [invitations]
+      summary: Get invitation details by invite code (public)
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invitation detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationDetail"
+        "404":
+          description: Invitation not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invitations/{code}/accept:
+    post:
+      operationId: acceptInvitation
+      tags: [invitations]
+      summary: Accept an invitation and join the pregnancy
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationAccept"
+      responses:
+        "200":
+          description: Membership created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipResult"
+        "400":
+          description: Invalid state (e.g. already a member)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invitations/{code}/decline:
+    post:
+      operationId: declineInvitation
+      tags: [invitations]
+      summary: Decline an invitation
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invitation declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeclineResult"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics:
+    post:
+      operationId: trackEvent
+      tags: [analytics]
+      summary: Track an analytics event
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticsInput"
+      responses:
+        "204":
+          description: Event recorded
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    # ── Auth ──────────────────────────────────────────────────────────────────
+
+    PhoneInput:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+          description: E.164 or 10-digit US phone number
+
+    VerificationSession:
+      type: object
+      required: [verificationId]
+      properties:
+        verificationId:
+          type: string
+
+    CodeVerification:
+      type: object
+      required: [phone, code]
+      properties:
+        phone:
+          type: string
+        code:
+          type: string
+          description: 6-digit OTP (any 6 digits accepted in development)
+
+    AuthSession:
+      type: object
+      required: [token, person, isNewUser]
+      properties:
+        token:
+          type: string
+        person:
+          $ref: "#/components/schemas/Person"
+        isNewUser:
+          type: boolean
+
+    MeResponse:
+      type: object
+      required: [person, pregnancies]
+      properties:
+        person:
+          $ref: "#/components/schemas/Person"
+        pregnancies:
+          type: array
+          items:
+            $ref: "#/components/schemas/PregnancySummary"
+
+    # ── Persons ───────────────────────────────────────────────────────────────
+
+    Person:
+      type: object
+      required: [id, displayName, phone, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PersonUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        email:
+          type: string
+
+    # ── Pregnancies ───────────────────────────────────────────────────────────
+
+    Pregnancy:
+      type: object
+      required: [id, name, dueDatePrecision, status, joinCode, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+          format: date
+        dueDatePrecision:
+          type: string
+          enum: [exact, approximate_month, unknown]
+        status:
+          type: string
+        joinCode:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PregnancySummary:
+      type: object
+      required: [id, name, dueDatePrecision, status, joinCode, myRole, memberCount, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+          format: date
+        dueDatePrecision:
+          type: string
+        status:
+          type: string
+        joinCode:
+          type: string
+        myRole:
+          type: string
+        memberCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    PregnancyInput:
+      type: object
+      required: [dueDatePrecision, role]
+      properties:
+        name:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        dueDatePrecision:
+          type: string
+          enum: [exact, approximate_month, unknown]
+        role:
+          type: string
+          enum: [pregnant_person, supporter]
+
+    PregnancyUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        dueDate:
+          type: string
+          format: date
+        dueDatePrecision:
+          type: string
+          enum: [exact, approximate_month, unknown]
+
+    Membership:
+      type: object
+      required: [id, personId, pregnancyId, role, invitationStatus, createdAt]
+      properties:
+        id:
+          type: integer
+        personId:
+          type: integer
+        pregnancyId:
+          type: integer
+        role:
+          type: string
+        invitationStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    MemberSummary:
+      type: object
+      required: [id, displayName, role]
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        role:
+          type: string
+
+    PregnancyRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    PregnancyWithMembership:
+      type: object
+      required: [pregnancy, membership]
+      properties:
+        pregnancy:
+          $ref: "#/components/schemas/Pregnancy"
+        membership:
+          $ref: "#/components/schemas/Membership"
+
+    PregnancyDetail:
+      type: object
+      required: [pregnancy, members, myMembership]
+      properties:
+        pregnancy:
+          $ref: "#/components/schemas/Pregnancy"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberSummary"
+        myMembership:
+          $ref: "#/components/schemas/Membership"
+
+    # ── Invitations ───────────────────────────────────────────────────────────
+
+    Invitation:
+      type: object
+      required: [id, pregnancyId, inviteeName, inviteCode, status, sentAt, createdAt]
+      properties:
+        id:
+          type: integer
+        pregnancyId:
+          type: integer
+        inviteeName:
+          type: string
+        inviteePhone:
+          type: ["string", "null"]
+        inviteCode:
+          type: string
+        status:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        acceptedAt:
+          type: ["string", "null"]
+          format: date-time
+        declinedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    InvitationInput:
+      type: object
+      required: [inviteeName]
+      properties:
+        inviteeName:
+          type: string
+          minLength: 1
+        inviteePhone:
+          type: string
+
+    InvitationWithLink:
+      type: object
+      required: [invitation, joinUrl, joinCode]
+      properties:
+        invitation:
+          $ref: "#/components/schemas/Invitation"
+        joinUrl:
+          type: string
+        joinCode:
+          type: string
+
+    InvitationDetail:
+      type: object
+      required: [invitation, pregnancy, inviterName, existingPregnantPerson]
+      properties:
+        invitation:
+          $ref: "#/components/schemas/Invitation"
+        pregnancy:
+          $ref: "#/components/schemas/PregnancyRef"
+        inviterName:
+          type: string
+        existingPregnantPerson:
+          type: boolean
+
+    InvitationAccept:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [pregnant_person, supporter]
+
+    MembershipResult:
+      type: object
+      required: [membership, pregnancy, convertedPreviousRole]
+      properties:
+        membership:
+          $ref: "#/components/schemas/Membership"
+        pregnancy:
+          $ref: "#/components/schemas/Pregnancy"
+        convertedPreviousRole:
+          type: boolean
+
+    DeclineResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    # ── Analytics ─────────────────────────────────────────────────────────────
+
+    AnalyticsInput:
+      type: object
+      required: [event]
+      properties:
+        event:
+          type: string
+        pregnancyId:
+          type: integer
+        properties:
+          type: object
+          additionalProperties: true

@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -8,6 +9,8 @@ import {
   View,
 } from "react-native";
 
+import { useApp } from "@/context/AppContext";
+import { useCreateInvitation } from "@workspace/api-client-react";
 import {
   OnboardingLayout,
   PrimaryButton,
@@ -17,8 +20,21 @@ import { useColors } from "@/hooks/useColors";
 
 export default function InviteScreen() {
   const colors = useColors();
+  const { currentPregnancyId } = useApp();
   const [inviteName, setInviteName] = useState("");
   const [invitePhone, setInvitePhone] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const createInvitation = useCreateInvitation({
+    mutation: {
+      onSuccess: () => {
+        router.push("/onboarding/notifications");
+      },
+      onError: () => {
+        setError("Failed to send invite. Please try again.");
+      },
+    },
+  });
 
   function formatPhone(raw: string) {
     const digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -27,13 +43,25 @@ export default function InviteScreen() {
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
 
-  function handleSend() {
-    router.push("/onboarding/notifications");
+  async function handleSend() {
+    if (!currentPregnancyId) return;
+    setError(null);
+    createInvitation.mutate({
+      pregnancyId: currentPregnancyId,
+      data: {
+        inviteeName: inviteName.trim(),
+        inviteePhone: invitePhone.replace(/\D/g, "") || undefined,
+      },
+    });
   }
 
   function handleSkip() {
     router.push("/onboarding/notifications");
   }
+
+  const canSend =
+    inviteName.trim().length > 0 &&
+    invitePhone.replace(/\D/g, "").length >= 10;
 
   return (
     <OnboardingLayout
@@ -43,12 +71,9 @@ export default function InviteScreen() {
       bottomContent={
         <View style={{ gap: 10 }}>
           <PrimaryButton
-            label="Send invite"
+            label={createInvitation.isPending ? "Sending…" : "Send invite"}
             onPress={handleSend}
-            disabled={
-              inviteName.trim().length === 0 ||
-              invitePhone.replace(/\D/g, "").length < 10
-            }
+            disabled={!canSend || createInvitation.isPending}
           />
           <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
             <Text
@@ -125,6 +150,13 @@ export default function InviteScreen() {
             ]}
           />
         </View>
+        {error && (
+          <Text
+            style={[styles.error, { color: colors.destructive, fontFamily: fonts.sansRegular }]}
+          >
+            {error}
+          </Text>
+        )}
       </View>
     </OnboardingLayout>
   );
@@ -151,5 +183,10 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 15,
+  },
+  error: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
   },
 });

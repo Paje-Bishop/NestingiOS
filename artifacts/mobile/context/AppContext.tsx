@@ -1,15 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
-
-export interface UserData {
-  userName: string;
-  role: "pregnant" | "supporting";
-  phone: string;
-  dueDate: string | null;
-  dueDateType: "exact" | "approximate" | "unknown";
-  pregnancyName: string;
-  currentWeek: number;
-}
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export interface OnboardingData {
   userName?: string;
@@ -18,111 +9,121 @@ export interface OnboardingData {
   dueDate?: string | null;
   dueDateType?: "exact" | "approximate" | "unknown";
   pregnancyName?: string;
+  /** Set during the join flow — carries the invite code through onboarding screens */
+  inviteCode?: string;
+}
+
+interface AuthSession {
+  authToken: string;
+  personId: number;
 }
 
 interface AppContextType {
   isLoading: boolean;
   isOnboardingComplete: boolean;
-  userData: UserData | null;
+  authToken: string | null;
+  personId: number | null;
+  currentPregnancyId: number | null;
   onboardingData: OnboardingData;
   setOnboardingField: <K extends keyof OnboardingData>(
     key: K,
-    value: OnboardingData[K]
+    value: OnboardingData[K],
   ) => void;
-  completeOnboarding: () => Promise<void>;
+  setAuthSession: (token: string, personId: number) => Promise<void>;
+  setCurrentPregnancy: (pregnancyId: number) => Promise<void>;
+  clearAuthSession: () => Promise<void>;
   resetApp: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
-const STORAGE_KEY = "nest_app_data_v1";
+const KEYS = {
+  authToken: "nest_auth_token",
+  personId: "nest_person_id",
+  pregnancyId: "nest_pregnancy_id",
+} as const;
 
-function getMonthYear(dueDate: string | null): string {
-  if (!dueDate) {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 5);
-    return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  }
-  return new Date(dueDate).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function calculateWeek(
-  dueDate: string | null,
-  dueDateType?: string
-): number {
-  if (!dueDate || dueDateType === "unknown") return 18;
-  const due = new Date(dueDate);
-  const now = new Date();
-  const msLeft = due.getTime() - now.getTime();
-  const daysLeft = Math.floor(msLeft / (1000 * 60 * 60 * 24));
-  return Math.max(1, Math.min(42, 40 - Math.round(daysLeft / 7)));
-}
-
-export function AppProvider({ children }: { children: React.ReactNode }) {
+export function AppProvider({
+  children,
+  apiBaseUrl,
+}: {
+  children: React.ReactNode;
+  apiBaseUrl: string;
+}) {
   const [isLoading, setIsLoading] = useState(true);
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [personId, setPersonId] = useState<number | null>(null);
+  const [currentPregnancyId, setCurrentPregnancyId] = useState<number | null>(null);
   const [onboardingData, setOnboardingDataState] = useState<OnboardingData>({});
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((stored) => {
-        if (stored) {
-          const parsed: UserData = JSON.parse(stored);
-          setUserData(parsed);
-          setIsOnboardingComplete(true);
-        }
+    setBaseUrl(apiBaseUrl);
+    setAuthTokenGetter(async () => {
+      const t = await AsyncStorage.getItem(KEYS.authToken);
+      return t ?? null;
+    });
+
+    AsyncStorage.multiGet([KEYS.authToken, KEYS.personId, KEYS.pregnancyId])
+      .then(([[, token], [, pid], [, pregId]]) => {
+        if (token) setAuthToken(token);
+        if (pid) setPersonId(parseInt(pid, 10));
+        if (pregId) setCurrentPregnancyId(parseInt(pregId, 10));
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [apiBaseUrl]);
+
+  const isOnboardingComplete =
+    authToken !== null && currentPregnancyId !== null;
 
   function setOnboardingField<K extends keyof OnboardingData>(
     key: K,
-    value: OnboardingData[K]
+    value: OnboardingData[K],
   ) {
     setOnboardingDataState((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function completeOnboarding() {
-    const dueDate = onboardingData.dueDate ?? null;
-    const dueDateType = onboardingData.dueDateType ?? "unknown";
-    const week = calculateWeek(dueDate, dueDateType);
-    const finalData: UserData = {
-      userName: onboardingData.userName ?? "Friend",
-      role: onboardingData.role ?? "pregnant",
-      phone: onboardingData.phone ?? "",
-      dueDate,
-      dueDateType,
-      pregnancyName:
-        onboardingData.pregnancyName?.trim() ||
-        `Baby due ${getMonthYear(dueDate)}`,
-      currentWeek: week,
-    };
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
-    setUserData(finalData);
-    setIsOnboardingComplete(true);
-  }
+  const setAuthSession = useCallback(async (token: string, pid: number) => {
+    await AsyncStorage.multiSet([
+      [KEYS.authToken, token],
+      [KEYS.personId, pid.toString()],
+    ]);
+    setAuthToken(token);
+    setPersonId(pid);
+  }, []);
 
-  async function resetApp() {
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    setUserData(null);
+  const setCurrentPregnancy = useCallback(async (pregId: number) => {
+    await AsyncStorage.setItem(KEYS.pregnancyId, pregId.toString());
+    setCurrentPregnancyId(pregId);
+  }, []);
+
+  const clearAuthSession = useCallback(async () => {
+    await AsyncStorage.multiRemove([KEYS.authToken, KEYS.personId]);
+    setAuthToken(null);
+    setPersonId(null);
+  }, []);
+
+  const resetApp = useCallback(async () => {
+    await AsyncStorage.multiRemove([KEYS.authToken, KEYS.personId, KEYS.pregnancyId]);
+    setAuthToken(null);
+    setPersonId(null);
+    setCurrentPregnancyId(null);
     setOnboardingDataState({});
-    setIsOnboardingComplete(false);
-  }
+  }, []);
 
   return (
     <AppContext.Provider
       value={{
         isLoading,
         isOnboardingComplete,
-        userData,
+        authToken,
+        personId,
+        currentPregnancyId,
         onboardingData,
         setOnboardingField,
-        completeOnboarding,
+        setAuthSession,
+        setCurrentPregnancy,
+        clearAuthSession,
         resetApp,
       }}
     >

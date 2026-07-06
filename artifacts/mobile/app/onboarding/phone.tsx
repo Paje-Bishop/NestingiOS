@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { useSendVerificationCode, useVerifyCode } from "@workspace/api-client-react";
 import {
   OnboardingLayout,
   PrimaryButton,
@@ -20,13 +21,40 @@ import { useColors } from "@/hooks/useColors";
 
 export default function PhoneScreen() {
   const colors = useColors();
-  const { setOnboardingField } = useApp();
+  const { setOnboardingField, setAuthSession } = useApp();
   const [phone, setPhone] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const codeRef = useRef<TextInput>(null);
+
+  const sendCode = useSendVerificationCode({
+    mutation: {
+      onSuccess: () => {
+        setCodeSent(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setTimeout(() => codeRef.current?.focus(), 300);
+      },
+      onError: () => {
+        setError("Failed to send code. Please try again.");
+      },
+    },
+  });
+
+  const verifyCode = useVerifyCode({
+    mutation: {
+      onSuccess: async (data) => {
+        const digits = phone.replace(/\D/g, "");
+        setOnboardingField("phone", digits);
+        await setAuthSession(data.token, data.person.id);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.push("/onboarding/name");
+      },
+      onError: () => {
+        setError("Incorrect code. Please try again.");
+      },
+    },
+  });
 
   function formatPhone(raw: string) {
     const digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -42,12 +70,7 @@ export default function PhoneScreen() {
       return;
     }
     setError(null);
-    setSending(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setSending(false);
-    setCodeSent(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => codeRef.current?.focus(), 300);
+    sendCode.mutate({ data: { phone: digits } });
   }
 
   function handleVerify() {
@@ -56,10 +79,11 @@ export default function PhoneScreen() {
       return;
     }
     setError(null);
-    setOnboardingField("phone", phone.replace(/\D/g, ""));
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.push("/onboarding/name");
+    verifyCode.mutate({ data: { phone: phone.replace(/\D/g, ""), code } });
   }
+
+  const isSending = sendCode.isPending;
+  const isVerifying = verifyCode.isPending;
 
   return (
     <OnboardingLayout
@@ -73,26 +97,26 @@ export default function PhoneScreen() {
       bottomContent={
         codeSent ? (
           <PrimaryButton
-            label="Verify"
+            label={isVerifying ? "Verifying…" : "Verify"}
             onPress={handleVerify}
-            disabled={code.length < 6}
+            disabled={code.length < 6 || isVerifying}
           />
         ) : (
           <TouchableOpacity
             onPress={handleSendCode}
-            disabled={sending || phone.replace(/\D/g, "").length < 10}
+            disabled={isSending || phone.replace(/\D/g, "").length < 10}
             activeOpacity={0.8}
             style={[
               styles.btn,
               {
                 backgroundColor:
-                  phone.replace(/\D/g, "").length < 10 || sending
+                  phone.replace(/\D/g, "").length < 10 || isSending
                     ? colors.muted
                     : colors.primary,
               },
             ]}
           >
-            {sending ? (
+            {isSending ? (
               <ActivityIndicator color={colors.primaryForeground} size="small" />
             ) : (
               <Text

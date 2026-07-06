@@ -12,12 +12,17 @@ import { useColors } from "@/hooks/useColors";
 
 export default function NameScreen() {
   const colors = useColors();
-  const { setOnboardingField } = useApp();
+  const { setOnboardingField, onboardingData } = useApp();
   const [name, setName] = useState("");
 
   function handleContinue() {
     setOnboardingField("userName", name.trim());
-    router.push("/onboarding/role");
+    // Join flow: skip create-specific screens and go straight to role selection
+    if (onboardingData.inviteCode) {
+      router.push("/onboarding/join-role");
+    } else {
+      router.push("/onboarding/role");
+    }
   }
 
   return (

@@ -1,0 +1,2 @@
+- [Nest API architecture](nest-api-arch.md) — sessions as bearer UUIDs; phone-verify is dev-stub (any 6-digit code); date columns use mode:"string"; dueDate from Orval is Date object, convert with .toISOString().split("T")[0]
+- [Nest mobile patterns](nest-mobile-patterns.md) — Orval mutations wrap body in {data:{...}}; AppContext.inviteCode signals join flow; req.params typed string|string[] so always cast as string

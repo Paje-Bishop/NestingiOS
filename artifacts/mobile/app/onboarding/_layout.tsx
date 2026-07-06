@@ -13,6 +13,10 @@ export default function OnboardingLayout() {
       <Stack.Screen name="invite" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="complete" />
+      <Stack.Screen name="join-code" />
+      <Stack.Screen name="invitation-accept" />
+      <Stack.Screen name="join-role" />
+      <Stack.Screen name="join-complete" />
     </Stack>
   );
 }

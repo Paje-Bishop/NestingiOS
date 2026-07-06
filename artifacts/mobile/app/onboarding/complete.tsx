@@ -1,44 +1,79 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useCreateInvitation, useCreatePregnancy, useUpdateMe } from "@workspace/api-client-react";
 import { PrimaryButton } from "@/components/ui/OnboardingLayout";
 import { fonts } from "@/constants/fonts";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 function getWeekOrdinal(week: number): string {
-  const s = ["th","st","nd","rd"];
+  const s = ["th", "st", "nd", "rd"];
   const v = week % 100;
-  return week + (s[(v-20)%10] || s[v] || s[0]);
+  return week + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function calculateWeek(dueDate: string | null | undefined, dueDateType?: string): number {
+  if (!dueDate || dueDateType === "unknown") return 18;
+  const due = new Date(dueDate);
+  const now = new Date();
+  const daysLeft = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(1, Math.min(42, 40 - Math.round(daysLeft / 7)));
 }
 
 export default function CompleteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { onboardingData, completeOnboarding } = useApp();
+  const { onboardingData, setCurrentPregnancy } = useApp();
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
 
   const name = onboardingData.userName ?? "Friend";
   const role = onboardingData.role ?? "pregnant";
   const dueDateType = onboardingData.dueDateType ?? "unknown";
-  const week = (() => {
-    if (!onboardingData.dueDate || dueDateType === "unknown") return 18;
-    const due = new Date(onboardingData.dueDate);
-    const now = new Date();
-    const daysLeft = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(1, Math.min(42, 40 - Math.round(daysLeft / 7)));
-  })();
+  const week = calculateWeek(onboardingData.dueDate, dueDateType);
 
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
 
+  const updateMe = useUpdateMe();
+  const createPregnancy = useCreatePregnancy();
+  const createInvitation = useCreateInvitation();
+
   async function handleGoToNest() {
-    await completeOnboarding();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.replace("/(tabs)");
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await updateMe.mutateAsync({ data: { displayName: name } });
+
+      const dueDatePrecision =
+        dueDateType === "exact"
+          ? "exact"
+          : dueDateType === "approximate"
+            ? "approximate_month"
+            : "unknown";
+
+      const { pregnancy } = await createPregnancy.mutateAsync({
+        data: {
+          name: onboardingData.pregnancyName?.trim() || undefined,
+          dueDate: onboardingData.dueDate ?? undefined,
+          dueDatePrecision,
+          role: role === "pregnant" ? "pregnant_person" : "supporter",
+        },
+      });
+
+      await setCurrentPregnancy(pregnancy.id);
+      setDone(true);
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      router.replace("/(tabs)");
+    } catch {
+      setSubmitting(false);
+    }
   }
 
   const supportingCopy =
@@ -57,7 +92,6 @@ export default function CompleteScreen() {
         },
       ]}
     >
-      {/* Step label */}
       <Text
         style={[
           styles.stepLabel,
@@ -68,7 +102,6 @@ export default function CompleteScreen() {
       </Text>
 
       <View style={styles.content}>
-        {/* Decorative circle */}
         <View
           style={[styles.decorCircle, { backgroundColor: colors.greenCard }]}
         >
@@ -141,7 +174,11 @@ export default function CompleteScreen() {
       </View>
 
       <View style={{ paddingHorizontal: 24 }}>
-        <PrimaryButton label="Go to Nest" onPress={handleGoToNest} />
+        {submitting ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <PrimaryButton label="Go to Nest" onPress={handleGoToNest} disabled={done} />
+        )}
       </View>
     </View>
   );
