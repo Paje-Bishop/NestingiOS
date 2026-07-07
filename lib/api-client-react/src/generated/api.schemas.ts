@@ -330,6 +330,27 @@ export interface JourneyCurrentWeek {
   journal?: JournalSlot | null;
 }
 
+export type JourneyWeekViewRelation = typeof JourneyWeekViewRelation[keyof typeof JourneyWeekViewRelation];
+
+
+export const JourneyWeekViewRelation = {
+  past: 'past',
+  current: 'current',
+  future: 'future',
+} as const;
+
+export interface JourneyWeekView {
+  weekNumber: number;
+  /** The member's resolved current week, for navigation bounds */
+  currentWeek: number;
+  relation: JourneyWeekViewRelation;
+  /** True for future weeks — role content, common experiences, and prompts are withheld */
+  locked: boolean;
+  content?: JourneyWeekContent | null;
+  /** This week's memories — the viewer's own plus others' public (empty for future) */
+  memories: Memory[];
+}
+
 export type MemoryInputSourceType = typeof MemoryInputSourceType[keyof typeof MemoryInputSourceType];
 
 
@@ -359,5 +380,219 @@ export interface MemoryInput {
   promptLibraryItemId?: number;
   /** Defaults by sourceType — journey_prompt = private, manual = public */
   visibility?: MemoryInputVisibility;
+}
+
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
+export type TaskTaskType = typeof TaskTaskType[keyof typeof TaskTaskType];
+
+
+export const TaskTaskType = {
+  mine_only: 'mine_only',
+  assigned: 'assigned',
+  together: 'together',
+} as const;
+
+export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
+
+
+export const TaskStatus = {
+  not_started: 'not_started',
+  in_progress: 'in_progress',
+  completed: 'completed',
+} as const;
+
+export interface Task {
+  id: number;
+  pregnancyId: number;
+  title: string;
+  /** @nullable */
+  whyNow?: string | null;
+  /** @nullable */
+  whyItMatters?: string | null;
+  /** @nullable */
+  checklist?: ChecklistItem[] | null;
+  /** @nullable */
+  prompts?: string | null;
+  taskType: TaskTaskType;
+  status: TaskStatus;
+  /** @nullable */
+  assignedMemberId?: number | null;
+  /** @nullable */
+  assignedMemberName?: string | null;
+  /** @nullable */
+  dueWeek?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  isUserAdded: boolean;
+  /** @nullable */
+  relatedSharedDecisionId?: number | null;
+  sortOrder: number;
+  /** @nullable */
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PrepareMemberRole = typeof PrepareMemberRole[keyof typeof PrepareMemberRole];
+
+
+export const PrepareMemberRole = {
+  pregnant_person: 'pregnant_person',
+  supporter: 'supporter',
+} as const;
+
+export interface PrepareMember {
+  membershipId: number;
+  personName: string;
+  role: PrepareMemberRole;
+}
+
+export type PrepareTasksViewViewerRole = typeof PrepareTasksViewViewerRole[keyof typeof PrepareTasksViewViewerRole];
+
+
+export const PrepareTasksViewViewerRole = {
+  pregnant_person: 'pregnant_person',
+  supporter: 'supporter',
+} as const;
+
+export interface PrepareTasksView {
+  viewerMembershipId: number;
+  viewerRole: PrepareTasksViewViewerRole;
+  /** False when no member holds the Pregnant Person role — Mine Only tasks are held back */
+  hasPregnantPerson: boolean;
+  members: PrepareMember[];
+  tasks: Task[];
+}
+
+/**
+ * Defaults to together when omitted
+ */
+export type TaskInputTaskType = typeof TaskInputTaskType[keyof typeof TaskInputTaskType];
+
+
+export const TaskInputTaskType = {
+  mine_only: 'mine_only',
+  assigned: 'assigned',
+  together: 'together',
+} as const;
+
+export interface TaskInput {
+  title: string;
+  whyNow?: string;
+  whyItMatters?: string;
+  /** Defaults to together when omitted */
+  taskType?: TaskInputTaskType;
+  assignedMemberId?: number;
+  dueWeek?: number;
+  notes?: string;
+  checklist?: ChecklistItem[];
+}
+
+export type TaskUpdateStatus = typeof TaskUpdateStatus[keyof typeof TaskUpdateStatus];
+
+
+export const TaskUpdateStatus = {
+  not_started: 'not_started',
+  in_progress: 'in_progress',
+  completed: 'completed',
+} as const;
+
+export interface TaskUpdate {
+  status?: TaskUpdateStatus;
+  checklist?: ChecklistItem[];
+  notes?: string;
+  /**
+     * Reassign to an active member, or null to unassign
+     * @nullable
+     */
+  assignedMemberId?: number | null;
+}
+
+export interface DecisionContribution {
+  id: number;
+  sharedDecisionId: number;
+  authorMembershipId: number;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export type SharedDecisionStatus = typeof SharedDecisionStatus[keyof typeof SharedDecisionStatus];
+
+
+export const SharedDecisionStatus = {
+  open: 'open',
+  decision_recorded: 'decision_recorded',
+  closed: 'closed',
+} as const;
+
+export type SharedDecisionVisibility = typeof SharedDecisionVisibility[keyof typeof SharedDecisionVisibility];
+
+
+export const SharedDecisionVisibility = {
+  public: 'public',
+  private: 'private',
+} as const;
+
+export interface SharedDecision {
+  id: number;
+  pregnancyId: number;
+  title: string;
+  /** @nullable */
+  prompt?: string | null;
+  status: SharedDecisionStatus;
+  visibility: SharedDecisionVisibility;
+  /** @nullable */
+  finalDecision?: string | null;
+  /** @nullable */
+  finalRationale?: string | null;
+  /** @nullable */
+  closedByMembershipId?: number | null;
+  /** @nullable */
+  closedAt?: string | null;
+  /** @nullable */
+  relatedTaskId?: number | null;
+  createdByMembershipId: number;
+  contributionCount: number;
+  viewerIsContributor: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SharedDecisionDetail = SharedDecision & {
+  contributions: DecisionContribution[];
+};
+
+/**
+ * Defaults to public
+ */
+export type DecisionInputVisibility = typeof DecisionInputVisibility[keyof typeof DecisionInputVisibility];
+
+
+export const DecisionInputVisibility = {
+  public: 'public',
+  private: 'private',
+} as const;
+
+export interface DecisionInput {
+  title: string;
+  prompt?: string;
+  /** Defaults to public */
+  visibility?: DecisionInputVisibility;
+  relatedTaskId?: number;
+}
+
+export interface ContributionInput {
+  body: string;
+}
+
+export interface CloseDecisionInput {
+  finalDecision: string;
+  finalRationale?: string;
 }
 

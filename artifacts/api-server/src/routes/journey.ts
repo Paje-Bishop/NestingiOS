@@ -188,4 +188,192 @@ router.get(
   },
 );
 
+// How many weeks ahead a member may preview (headline only). Beyond this the
+// future stays fully locked so members aren't pulled into content that isn't
+// theirs yet (FS-003 Story 4).
+const FUTURE_PREVIEW_WEEKS = 2;
+
+// GET /pregnancies/:pregnancyId/journey/week/:weekNumber
+// Browse a specific week relative to the resolved current week. Past weeks show
+// condensed shared content plus the viewer's own memories and others' public
+// memories. Future weeks (within the preview window) show only the "Your Baby"
+// headline; everything else stays locked until the week is current.
+router.get(
+  "/pregnancies/:pregnancyId/journey/week/:weekNumber",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const pregnancyId = parseInt(req.params.pregnancyId as string, 10);
+    const requestedWeek = parseInt(req.params.weekNumber as string, 10);
+    if (isNaN(pregnancyId)) {
+      res.status(400).json({ error: "Invalid pregnancy ID" });
+      return;
+    }
+    if (isNaN(requestedWeek) || requestedWeek < 1 || requestedWeek > 42) {
+      res.status(400).json({ error: "Invalid week number" });
+      return;
+    }
+
+    const [membership] = await db
+      .select({ id: membershipsTable.id, role: membershipsTable.role })
+      .from(membershipsTable)
+      .where(
+        and(
+          eq(membershipsTable.pregnancyId, pregnancyId),
+          eq(membershipsTable.personId, req.personId),
+          eq(membershipsTable.invitationStatus, "active"),
+        ),
+      );
+
+    if (!membership) {
+      res.status(403).json({ error: "Not a member of this pregnancy" });
+      return;
+    }
+
+    const [pregnancy] = await db
+      .select({
+        dueDate: pregnanciesTable.dueDate,
+        dueDatePrecision: pregnanciesTable.dueDatePrecision,
+      })
+      .from(pregnanciesTable)
+      .where(eq(pregnanciesTable.id, pregnancyId));
+
+    if (!pregnancy?.dueDate || pregnancy.dueDatePrecision === "unknown") {
+      res.status(400).json({ error: "Add a due date to browse your weeks" });
+      return;
+    }
+
+    const currentWeek = weekFromDueDate(pregnancy.dueDate);
+    const relation =
+      requestedWeek < currentWeek ? "past" : requestedWeek === currentWeek ? "current" : "future";
+
+    // Future beyond the preview window stays fully locked — no content, no memories.
+    if (relation === "future" && requestedWeek > currentWeek + FUTURE_PREVIEW_WEEKS) {
+      res.json({
+        weekNumber: requestedWeek,
+        currentWeek,
+        relation,
+        locked: true,
+        content: null,
+        memories: [],
+      });
+      return;
+    }
+
+    const [week] = await db
+      .select()
+      .from(journeyWeeksTable)
+      .where(eq(journeyWeeksTable.weekNumber, requestedWeek));
+
+    const placeholderBaby = `Week ${requestedWeek} of your journey. Detailed week-by-week content is on its way — for now, this is a gentle placeholder.`;
+
+    // Future preview: only the shared headline; role content, common experiences,
+    // reassurance, and prompts stay locked until the week is current.
+    if (relation === "future") {
+      res.json({
+        weekNumber: requestedWeek,
+        currentWeek,
+        relation,
+        locked: true,
+        content: {
+          weekNumber: requestedWeek,
+          yourBaby: week ? week.sharedBabyDevelopment : placeholderBaby,
+          milestones: null,
+          commonExperiences: null,
+          roleContent: null,
+          isThisCommon: null,
+          role: membership.role,
+        },
+        memories: [],
+      });
+      return;
+    }
+
+    // Past weeks are condensed: shared development + milestones only. The current
+    // week returns its full role-aware content (the /current endpoint owns the
+    // journal composer, so this view stays read-only).
+    const roleContent =
+      relation === "current" && week
+        ? membership.role === "pregnant_person"
+          ? week.pregnantPersonVariant
+          : week.supporterVariant
+        : null;
+
+    const content = week
+      ? {
+          weekNumber: requestedWeek,
+          yourBaby: week.sharedBabyDevelopment,
+          milestones: week.sharedMilestones ?? null,
+          commonExperiences: relation === "current" ? week.commonExperiences ?? null : null,
+          roleContent: roleContent ?? null,
+          isThisCommon: relation === "current" ? week.isThisCommonContent ?? null : null,
+          role: membership.role,
+        }
+      : {
+          weekNumber: requestedWeek,
+          yourBaby: placeholderBaby,
+          milestones: null,
+          commonExperiences: null,
+          roleContent: null,
+          isThisCommon: null,
+          role: membership.role,
+        };
+
+    // Memories for this week: the viewer's own (any visibility) plus other
+    // members' public entries. Another member's private memory never appears.
+    const rows = await db
+      .select({
+        id: memoriesTable.id,
+        pregnancyId: memoriesTable.pregnancyId,
+        authorMembershipId: memoriesTable.authorMembershipId,
+        authorName: personsTable.displayName,
+        sourceType: memoriesTable.sourceType,
+        text: memoriesTable.text,
+        photoUrls: memoriesTable.photoUrls,
+        journeyWeekNumber: memoriesTable.journeyWeekNumber,
+        promptLibraryItemId: memoriesTable.promptLibraryItemId,
+        visibility: memoriesTable.visibility,
+        createdAt: memoriesTable.createdAt,
+        updatedAt: memoriesTable.updatedAt,
+      })
+      .from(memoriesTable)
+      .innerJoin(membershipsTable, eq(memoriesTable.authorMembershipId, membershipsTable.id))
+      .innerJoin(personsTable, eq(membershipsTable.personId, personsTable.id))
+      .where(
+        and(
+          eq(memoriesTable.pregnancyId, pregnancyId),
+          eq(memoriesTable.journeyWeekNumber, requestedWeek),
+          or(
+            eq(memoriesTable.authorMembershipId, membership.id),
+            eq(memoriesTable.visibility, "public"),
+          ),
+        ),
+      )
+      .orderBy(asc(memoriesTable.createdAt));
+
+    const memories = rows.map((r) => ({
+      id: r.id,
+      pregnancyId: r.pregnancyId,
+      authorMembershipId: r.authorMembershipId,
+      authorName: r.authorName ?? "",
+      sourceType: r.sourceType,
+      text: r.text ?? null,
+      photoUrls: r.photoUrls ? (JSON.parse(r.photoUrls) as string[]) : null,
+      journeyWeekNumber: r.journeyWeekNumber ?? null,
+      promptLibraryItemId: r.promptLibraryItemId ?? null,
+      visibility: r.visibility,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
+
+    res.json({
+      weekNumber: requestedWeek,
+      currentWeek,
+      relation,
+      locked: false,
+      content,
+      memories,
+    });
+  },
+);
+
 export default router;

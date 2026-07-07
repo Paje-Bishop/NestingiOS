@@ -8,3 +8,6 @@ export * from "./analytics_events";
 export * from "./journey_weeks";
 export * from "./memory_prompts";
 export * from "./memories";
+export * from "./tasks";
+export * from "./shared_decisions";
+export * from "./decision_contributions";

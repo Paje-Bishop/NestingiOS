@@ -459,6 +459,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pregnancies/{pregnancyId}/journey/week/{weekNumber}:
+    get:
+      operationId: getJourneyWeek
+      tags: [journey]
+      summary: Browse a specific Journey week (past condensed, future preview) with its memories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: weekNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The requested week relative to the member's current week
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyWeekView"
+        "400":
+          description: Invalid week or timing not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /pregnancies/{pregnancyId}/memories:
     get:
       operationId: listMemories
@@ -538,6 +582,458 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: A journal entry already exists for this week
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/tasks:
+    get:
+      operationId: listTasks
+      tags: [prepare]
+      summary: List a pregnancy's Prepare tasks with viewer context for the task views
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tasks plus the viewing member's context for view filtering
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrepareTasksView"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createTask
+      tags: [prepare]
+      summary: Add a user-created task (isUserAdded is always true)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/tasks/{taskId}:
+    get:
+      operationId: getTask
+      tags: [prepare]
+      summary: Get a single task's detail view
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateTask
+      tags: [prepare]
+      summary: Update a task — toggle checklist, change status, reassign, or edit notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/decisions:
+    get:
+      operationId: listDecisions
+      tags: [prepare]
+      summary: List a pregnancy's Shared Decisions the member can see (all public, plus own private)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shared decisions visible to the member
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SharedDecision"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createDecision
+      tags: [prepare]
+      summary: Open a new Shared Decision (defaults to Public)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionInput"
+      responses:
+        "201":
+          description: Created shared decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDecisionDetail"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/decisions/{decisionId}:
+    get:
+      operationId: getDecision
+      tags: [prepare]
+      summary: Get a Shared Decision with its chronological contributions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shared decision detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDecisionDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not visible to this member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Decision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/decisions/{decisionId}/contributions:
+    post:
+      operationId: addContribution
+      tags: [prepare]
+      summary: Add an authored contribution (makes the member a contributor)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContributionInput"
+      responses:
+        "201":
+          description: Decision detail with the new contribution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDecisionDetail"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not visible to this member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Decision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/decisions/{decisionId}/close:
+    post:
+      operationId: closeDecision
+      tags: [prepare]
+      summary: Record the final decision and close it (contributors only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseDecisionInput"
+      responses:
+        "200":
+          description: Closed decision detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDecisionDetail"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Only a contributor can close this decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Decision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/decisions/{decisionId}/reopen:
+    post:
+      operationId: reopenDecision
+      tags: [prepare]
+      summary: Reopen a closed decision (contributors only); history is preserved
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reopened decision detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDecisionDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Only a contributor can reopen this decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Decision not found
           content:
             application/json:
               schema:
@@ -963,6 +1459,31 @@ components:
             - $ref: "#/components/schemas/JournalSlot"
             - type: "null"
 
+    JourneyWeekView:
+      type: object
+      required: [weekNumber, currentWeek, relation, locked, memories]
+      properties:
+        weekNumber:
+          type: integer
+        currentWeek:
+          type: integer
+          description: The member's resolved current week, for navigation bounds
+        relation:
+          type: string
+          enum: [past, current, future]
+        locked:
+          type: boolean
+          description: True for future weeks — role content, common experiences, and prompts are withheld
+        content:
+          oneOf:
+            - $ref: "#/components/schemas/JourneyWeekContent"
+            - type: "null"
+        memories:
+          type: array
+          description: This week's memories — the viewer's own plus others' public (empty for future)
+          items:
+            $ref: "#/components/schemas/Memory"
+
     # ── Memories ──────────────────────────────────────────────────────────────
 
     Memory:
@@ -1023,3 +1544,244 @@ components:
           type: string
           enum: [private, public]
           description: Defaults by sourceType — journey_prompt = private, manual = public
+
+    # ── Prepare: Tasks ────────────────────────────────────────────────────────
+
+    ChecklistItem:
+      type: object
+      required: [id, label, done]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        done:
+          type: boolean
+
+    Task:
+      type: object
+      required: [id, pregnancyId, title, taskType, status, isUserAdded, sortOrder, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        pregnancyId:
+          type: integer
+        title:
+          type: string
+        whyNow:
+          type: ["string", "null"]
+        whyItMatters:
+          type: ["string", "null"]
+        checklist:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+        prompts:
+          type: ["string", "null"]
+        taskType:
+          type: string
+          enum: [mine_only, assigned, together]
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        assignedMemberId:
+          type: ["integer", "null"]
+        assignedMemberName:
+          type: ["string", "null"]
+        dueWeek:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        isUserAdded:
+          type: boolean
+        relatedSharedDecisionId:
+          type: ["integer", "null"]
+        sortOrder:
+          type: integer
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PrepareMember:
+      type: object
+      required: [membershipId, personName, role]
+      properties:
+        membershipId:
+          type: integer
+        personName:
+          type: string
+        role:
+          type: string
+          enum: [pregnant_person, supporter]
+
+    PrepareTasksView:
+      type: object
+      required: [viewerMembershipId, viewerRole, hasPregnantPerson, members, tasks]
+      properties:
+        viewerMembershipId:
+          type: integer
+        viewerRole:
+          type: string
+          enum: [pregnant_person, supporter]
+        hasPregnantPerson:
+          type: boolean
+          description: False when no member holds the Pregnant Person role — Mine Only tasks are held back
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrepareMember"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+
+    TaskInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        whyNow:
+          type: string
+        whyItMatters:
+          type: string
+        taskType:
+          type: string
+          enum: [mine_only, assigned, together]
+          description: Defaults to together when omitted
+        assignedMemberId:
+          type: integer
+        dueWeek:
+          type: integer
+        notes:
+          type: string
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+
+    TaskUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+        notes:
+          type: string
+        assignedMemberId:
+          type: ["integer", "null"]
+          description: Reassign to an active member, or null to unassign
+
+    # ── Prepare: Shared Decisions ─────────────────────────────────────────────
+
+    DecisionContribution:
+      type: object
+      required: [id, sharedDecisionId, authorMembershipId, authorName, body, createdAt]
+      properties:
+        id:
+          type: integer
+        sharedDecisionId:
+          type: integer
+        authorMembershipId:
+          type: integer
+        authorName:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    SharedDecision:
+      type: object
+      required: [id, pregnancyId, title, status, visibility, createdByMembershipId, contributionCount, viewerIsContributor, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        pregnancyId:
+          type: integer
+        title:
+          type: string
+        prompt:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [open, decision_recorded, closed]
+        visibility:
+          type: string
+          enum: [public, private]
+        finalDecision:
+          type: ["string", "null"]
+        finalRationale:
+          type: ["string", "null"]
+        closedByMembershipId:
+          type: ["integer", "null"]
+        closedAt:
+          type: ["string", "null"]
+          format: date-time
+        relatedTaskId:
+          type: ["integer", "null"]
+        createdByMembershipId:
+          type: integer
+        contributionCount:
+          type: integer
+        viewerIsContributor:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SharedDecisionDetail:
+      allOf:
+        - $ref: "#/components/schemas/SharedDecision"
+        - type: object
+          required: [contributions]
+          properties:
+            contributions:
+              type: array
+              items:
+                $ref: "#/components/schemas/DecisionContribution"
+
+    DecisionInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        prompt:
+          type: string
+        visibility:
+          type: string
+          enum: [public, private]
+          description: Defaults to public
+        relatedTaskId:
+          type: integer
+
+    ContributionInput:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+
+    CloseDecisionInput:
+      type: object
+      required: [finalDecision]
+      properties:
+        finalDecision:
+          type: string
+        finalRationale:
+          type: string

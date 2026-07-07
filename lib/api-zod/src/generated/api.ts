@@ -376,6 +376,45 @@ export const GetCurrentJourneyWeekResponse = zod.object({
 
 
 /**
+ * @summary Browse a specific Journey week (past condensed, future preview) with its memories
+ */
+export const GetJourneyWeekParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "weekNumber": zod.coerce.number()
+})
+
+export const GetJourneyWeekResponse = zod.object({
+  "weekNumber": zod.number(),
+  "currentWeek": zod.number().describe('The member\'s resolved current week, for navigation bounds'),
+  "relation": zod.enum(['past', 'current', 'future']),
+  "locked": zod.boolean().describe('True for future weeks — role content, common experiences, and prompts are withheld'),
+  "content": zod.union([zod.object({
+  "weekNumber": zod.number(),
+  "yourBaby": zod.string().describe('Shared baby-development content, identical for all roles'),
+  "milestones": zod.string().nullish(),
+  "commonExperiences": zod.string().nullish(),
+  "roleContent": zod.string().nullish().describe('Role-resolved framing (pregnant-person or supporter variant)'),
+  "isThisCommon": zod.string().nullish(),
+  "role": zod.enum(['pregnant_person', 'supporter']).describe('The role used to resolve role-specific content')
+}),zod.null()]).optional(),
+  "memories": zod.array(zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "sourceType": zod.enum(['manual', 'journey_prompt', 'shared_decision', 'milestone', 'task_completion', 'labor_update', 'birth_flow']),
+  "text": zod.string().nullish(),
+  "photoUrls": zod.array(zod.string()).nullish(),
+  "journeyWeekNumber": zod.number().nullish(),
+  "promptLibraryItemId": zod.number().nullish(),
+  "visibility": zod.enum(['private', 'public']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})).describe('This week\'s memories — the viewer\'s own plus others\' public (empty for future)')
+})
+
+
+/**
  * @summary List memories visible to the member (own + others' public), newest first
  */
 export const ListMemoriesParams = zod.object({
@@ -429,5 +468,407 @@ export const CreateMemoryResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary List a pregnancy's Prepare tasks with viewer context for the task views
+ */
+export const ListTasksParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const ListTasksResponse = zod.object({
+  "viewerMembershipId": zod.number(),
+  "viewerRole": zod.enum(['pregnant_person', 'supporter']),
+  "hasPregnantPerson": zod.boolean().describe('False when no member holds the Pregnant Person role — Mine Only tasks are held back'),
+  "members": zod.array(zod.object({
+  "membershipId": zod.number(),
+  "personName": zod.string(),
+  "role": zod.enum(['pregnant_person', 'supporter'])
+})),
+  "tasks": zod.array(zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "whyNow": zod.string().nullish(),
+  "whyItMatters": zod.string().nullish(),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "done": zod.boolean()
+})).nullish(),
+  "prompts": zod.string().nullish(),
+  "taskType": zod.enum(['mine_only', 'assigned', 'together']),
+  "status": zod.enum(['not_started', 'in_progress', 'completed']),
+  "assignedMemberId": zod.number().nullish(),
+  "assignedMemberName": zod.string().nullish(),
+  "dueWeek": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "isUserAdded": zod.boolean(),
+  "relatedSharedDecisionId": zod.number().nullish(),
+  "sortOrder": zod.number(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Add a user-created task (isUserAdded is always true)
+ */
+export const CreateTaskParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const CreateTaskBody = zod.object({
+  "title": zod.string(),
+  "whyNow": zod.string().optional(),
+  "whyItMatters": zod.string().optional(),
+  "taskType": zod.enum(['mine_only', 'assigned', 'together']).optional().describe('Defaults to together when omitted'),
+  "assignedMemberId": zod.number().optional(),
+  "dueWeek": zod.number().optional(),
+  "notes": zod.string().optional(),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "done": zod.boolean()
+})).optional()
+})
+
+export const CreateTaskResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "whyNow": zod.string().nullish(),
+  "whyItMatters": zod.string().nullish(),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "done": zod.boolean()
+})).nullish(),
+  "prompts": zod.string().nullish(),
+  "taskType": zod.enum(['mine_only', 'assigned', 'together']),
+  "status": zod.enum(['not_started', 'in_progress', 'completed']),
+  "assignedMemberId": zod.number().nullish(),
+  "assignedMemberName": zod.string().nullish(),
+  "dueWeek": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "isUserAdded": zod.boolean(),
+  "relatedSharedDecisionId": zod.number().nullish(),
+  "sortOrder": zod.number(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a single task's detail view
+ */
+export const GetTaskParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "taskId": zod.coerce.number()
+})
+
+export const GetTaskResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "whyNow": zod.string().nullish(),
+  "whyItMatters": zod.string().nullish(),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "done": zod.boolean()
+})).nullish(),
+  "prompts": zod.string().nullish(),
+  "taskType": zod.enum(['mine_only', 'assigned', 'together']),
+  "status": zod.enum(['not_started', 'in_progress', 'completed']),
+  "assignedMemberId": zod.number().nullish(),
+  "assignedMemberName": zod.string().nullish(),
+  "dueWeek": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "isUserAdded": zod.boolean(),
+  "relatedSharedDecisionId": zod.number().nullish(),
+  "sortOrder": zod.number(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a task — toggle checklist, change status, reassign, or edit notes
+ */
+export const UpdateTaskParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "taskId": zod.coerce.number()
+})
+
+export const UpdateTaskBody = zod.object({
+  "status": zod.enum(['not_started', 'in_progress', 'completed']).optional(),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "done": zod.boolean()
+})).optional(),
+  "notes": zod.string().optional(),
+  "assignedMemberId": zod.number().nullish().describe('Reassign to an active member, or null to unassign')
+})
+
+export const UpdateTaskResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "whyNow": zod.string().nullish(),
+  "whyItMatters": zod.string().nullish(),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "done": zod.boolean()
+})).nullish(),
+  "prompts": zod.string().nullish(),
+  "taskType": zod.enum(['mine_only', 'assigned', 'together']),
+  "status": zod.enum(['not_started', 'in_progress', 'completed']),
+  "assignedMemberId": zod.number().nullish(),
+  "assignedMemberName": zod.string().nullish(),
+  "dueWeek": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "isUserAdded": zod.boolean(),
+  "relatedSharedDecisionId": zod.number().nullish(),
+  "sortOrder": zod.number(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List a pregnancy's Shared Decisions the member can see (all public, plus own private)
+ */
+export const ListDecisionsParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const ListDecisionsResponseItem = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "prompt": zod.string().nullish(),
+  "status": zod.enum(['open', 'decision_recorded', 'closed']),
+  "visibility": zod.enum(['public', 'private']),
+  "finalDecision": zod.string().nullish(),
+  "finalRationale": zod.string().nullish(),
+  "closedByMembershipId": zod.number().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "relatedTaskId": zod.number().nullish(),
+  "createdByMembershipId": zod.number(),
+  "contributionCount": zod.number(),
+  "viewerIsContributor": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListDecisionsResponse = zod.array(ListDecisionsResponseItem)
+
+
+/**
+ * @summary Open a new Shared Decision (defaults to Public)
+ */
+export const CreateDecisionParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const CreateDecisionBody = zod.object({
+  "title": zod.string(),
+  "prompt": zod.string().optional(),
+  "visibility": zod.enum(['public', 'private']).optional().describe('Defaults to public'),
+  "relatedTaskId": zod.number().optional()
+})
+
+export const CreateDecisionResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "prompt": zod.string().nullish(),
+  "status": zod.enum(['open', 'decision_recorded', 'closed']),
+  "visibility": zod.enum(['public', 'private']),
+  "finalDecision": zod.string().nullish(),
+  "finalRationale": zod.string().nullish(),
+  "closedByMembershipId": zod.number().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "relatedTaskId": zod.number().nullish(),
+  "createdByMembershipId": zod.number(),
+  "contributionCount": zod.number(),
+  "viewerIsContributor": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "contributions": zod.array(zod.object({
+  "id": zod.number(),
+  "sharedDecisionId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Get a Shared Decision with its chronological contributions
+ */
+export const GetDecisionParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "decisionId": zod.coerce.number()
+})
+
+export const GetDecisionResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "prompt": zod.string().nullish(),
+  "status": zod.enum(['open', 'decision_recorded', 'closed']),
+  "visibility": zod.enum(['public', 'private']),
+  "finalDecision": zod.string().nullish(),
+  "finalRationale": zod.string().nullish(),
+  "closedByMembershipId": zod.number().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "relatedTaskId": zod.number().nullish(),
+  "createdByMembershipId": zod.number(),
+  "contributionCount": zod.number(),
+  "viewerIsContributor": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "contributions": zod.array(zod.object({
+  "id": zod.number(),
+  "sharedDecisionId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Add an authored contribution (makes the member a contributor)
+ */
+export const AddContributionParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "decisionId": zod.coerce.number()
+})
+
+export const AddContributionBody = zod.object({
+  "body": zod.string()
+})
+
+export const AddContributionResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "prompt": zod.string().nullish(),
+  "status": zod.enum(['open', 'decision_recorded', 'closed']),
+  "visibility": zod.enum(['public', 'private']),
+  "finalDecision": zod.string().nullish(),
+  "finalRationale": zod.string().nullish(),
+  "closedByMembershipId": zod.number().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "relatedTaskId": zod.number().nullish(),
+  "createdByMembershipId": zod.number(),
+  "contributionCount": zod.number(),
+  "viewerIsContributor": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "contributions": zod.array(zod.object({
+  "id": zod.number(),
+  "sharedDecisionId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Record the final decision and close it (contributors only)
+ */
+export const CloseDecisionParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "decisionId": zod.coerce.number()
+})
+
+export const CloseDecisionBody = zod.object({
+  "finalDecision": zod.string(),
+  "finalRationale": zod.string().optional()
+})
+
+export const CloseDecisionResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "prompt": zod.string().nullish(),
+  "status": zod.enum(['open', 'decision_recorded', 'closed']),
+  "visibility": zod.enum(['public', 'private']),
+  "finalDecision": zod.string().nullish(),
+  "finalRationale": zod.string().nullish(),
+  "closedByMembershipId": zod.number().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "relatedTaskId": zod.number().nullish(),
+  "createdByMembershipId": zod.number(),
+  "contributionCount": zod.number(),
+  "viewerIsContributor": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "contributions": zod.array(zod.object({
+  "id": zod.number(),
+  "sharedDecisionId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Reopen a closed decision (contributors only); history is preserved
+ */
+export const ReopenDecisionParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "decisionId": zod.coerce.number()
+})
+
+export const ReopenDecisionResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "prompt": zod.string().nullish(),
+  "status": zod.enum(['open', 'decision_recorded', 'closed']),
+  "visibility": zod.enum(['public', 'private']),
+  "finalDecision": zod.string().nullish(),
+  "finalRationale": zod.string().nullish(),
+  "closedByMembershipId": zod.number().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "relatedTaskId": zod.number().nullish(),
+  "createdByMembershipId": zod.number(),
+  "contributionCount": zod.number(),
+  "viewerIsContributor": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "contributions": zod.array(zod.object({
+  "id": zod.number(),
+  "sharedDecisionId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
 
 

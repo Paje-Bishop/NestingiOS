@@ -22,7 +22,10 @@ import type {
 import type {
   AnalyticsInput,
   AuthSession,
+  CloseDecisionInput,
   CodeVerification,
+  ContributionInput,
+  DecisionInput,
   DeclineResult,
   ErrorResponse,
   HealthStatus,
@@ -31,6 +34,7 @@ import type {
   InvitationInput,
   InvitationWithLink,
   JourneyCurrentWeek,
+  JourneyWeekView,
   MeResponse,
   MembershipResult,
   Memory,
@@ -44,6 +48,12 @@ import type {
   PregnancySummary,
   PregnancyUpdate,
   PregnancyWithMembership,
+  PrepareTasksView,
+  SharedDecision,
+  SharedDecisionDetail,
+  Task,
+  TaskInput,
+  TaskUpdate,
   VerificationSession
 } from './api.schemas';
 
@@ -1169,6 +1179,88 @@ export function useGetCurrentJourneyWeek<TData = Awaited<ReturnType<typeof getCu
 
 
 
+export const getGetJourneyWeekUrl = (pregnancyId: number,
+    weekNumber: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/journey/week/${weekNumber}`
+}
+
+/**
+ * @summary Browse a specific Journey week (past condensed, future preview) with its memories
+ */
+export const getJourneyWeek = async (pregnancyId: number,
+    weekNumber: number, options?: RequestInit): Promise<JourneyWeekView> => {
+
+  return customFetch<JourneyWeekView>(getGetJourneyWeekUrl(pregnancyId,weekNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJourneyWeekQueryKey = (pregnancyId: number,
+    weekNumber: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/journey/week/${weekNumber}`
+    ] as const;
+    }
+
+
+export const getGetJourneyWeekQueryOptions = <TData = Awaited<ReturnType<typeof getJourneyWeek>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number,
+    weekNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJourneyWeek>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneyWeekQueryKey(pregnancyId,weekNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneyWeek>>> = ({ signal }) => getJourneyWeek(pregnancyId,weekNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined && weekNumber !== null && weekNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJourneyWeek>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJourneyWeekQueryResult = NonNullable<Awaited<ReturnType<typeof getJourneyWeek>>>
+export type GetJourneyWeekQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Browse a specific Journey week (past condensed, future preview) with its memories
+ */
+
+export function useGetJourneyWeek<TData = Awaited<ReturnType<typeof getJourneyWeek>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number,
+    weekNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJourneyWeek>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJourneyWeekQueryOptions(pregnancyId,weekNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListMemoriesUrl = (pregnancyId: number,) => {
 
 
@@ -1315,5 +1407,756 @@ export const useCreateMemory = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateMemoryMutationOptions(options));
+    }
+
+export const getListTasksUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/tasks`
+}
+
+/**
+ * @summary List a pregnancy's Prepare tasks with viewer context for the task views
+ */
+export const listTasks = async (pregnancyId: number, options?: RequestInit): Promise<PrepareTasksView> => {
+
+  return customFetch<PrepareTasksView>(getListTasksUrl(pregnancyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTasksQueryKey = (pregnancyId: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/tasks`
+    ] as const;
+    }
+
+
+export const getListTasksQueryOptions = <TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTasksQueryKey(pregnancyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTasks>>> = ({ signal }) => listTasks(pregnancyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTasksQueryResult = NonNullable<Awaited<ReturnType<typeof listTasks>>>
+export type ListTasksQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List a pregnancy's Prepare tasks with viewer context for the task views
+ */
+
+export function useListTasks<TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTasksQueryOptions(pregnancyId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTaskUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/tasks`
+}
+
+/**
+ * @summary Add a user-created task (isUserAdded is always true)
+ */
+export const createTask = async (pregnancyId: number,
+    taskInput: TaskInput, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getCreateTaskUrl(pregnancyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskInput)
+  }
+);}
+
+
+
+
+export const getCreateTaskMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{pregnancyId: number;data: BodyType<TaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{pregnancyId: number;data: BodyType<TaskInput>}, TContext> => {
+
+const mutationKey = ['createTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTask>>, {pregnancyId: number;data: BodyType<TaskInput>}> = (props) => {
+          const {pregnancyId,data} = props ?? {};
+
+          return  createTask(pregnancyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTaskMutationResult = NonNullable<Awaited<ReturnType<typeof createTask>>>
+    export type CreateTaskMutationBody = BodyType<TaskInput>
+    export type CreateTaskMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Add a user-created task (isUserAdded is always true)
+ */
+export const useCreateTask = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{pregnancyId: number;data: BodyType<TaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTask>>,
+        TError,
+        {pregnancyId: number;data: BodyType<TaskInput>},
+        TContext
+      > => {
+      return useMutation(getCreateTaskMutationOptions(options));
+    }
+
+export const getGetTaskUrl = (pregnancyId: number,
+    taskId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/tasks/${taskId}`
+}
+
+/**
+ * @summary Get a single task's detail view
+ */
+export const getTask = async (pregnancyId: number,
+    taskId: number, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getGetTaskUrl(pregnancyId,taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskQueryKey = (pregnancyId: number,
+    taskId: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/tasks/${taskId}`
+    ] as const;
+    }
+
+
+export const getGetTaskQueryOptions = <TData = Awaited<ReturnType<typeof getTask>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number,
+    taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTask>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskQueryKey(pregnancyId,taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTask>>> = ({ signal }) => getTask(pregnancyId,taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined && taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTask>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskQueryResult = NonNullable<Awaited<ReturnType<typeof getTask>>>
+export type GetTaskQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a single task's detail view
+ */
+
+export function useGetTask<TData = Awaited<ReturnType<typeof getTask>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number,
+    taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTask>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskQueryOptions(pregnancyId,taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateTaskUrl = (pregnancyId: number,
+    taskId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/tasks/${taskId}`
+}
+
+/**
+ * @summary Update a task — toggle checklist, change status, reassign, or edit notes
+ */
+export const updateTask = async (pregnancyId: number,
+    taskId: number,
+    taskUpdate: TaskUpdate, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getUpdateTaskUrl(pregnancyId,taskId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateTaskMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{pregnancyId: number;taskId: number;data: BodyType<TaskUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{pregnancyId: number;taskId: number;data: BodyType<TaskUpdate>}, TContext> => {
+
+const mutationKey = ['updateTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTask>>, {pregnancyId: number;taskId: number;data: BodyType<TaskUpdate>}> = (props) => {
+          const {pregnancyId,taskId,data} = props ?? {};
+
+          return  updateTask(pregnancyId,taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTaskMutationResult = NonNullable<Awaited<ReturnType<typeof updateTask>>>
+    export type UpdateTaskMutationBody = BodyType<TaskUpdate>
+    export type UpdateTaskMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a task — toggle checklist, change status, reassign, or edit notes
+ */
+export const useUpdateTask = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{pregnancyId: number;taskId: number;data: BodyType<TaskUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTask>>,
+        TError,
+        {pregnancyId: number;taskId: number;data: BodyType<TaskUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateTaskMutationOptions(options));
+    }
+
+export const getListDecisionsUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/decisions`
+}
+
+/**
+ * @summary List a pregnancy's Shared Decisions the member can see (all public, plus own private)
+ */
+export const listDecisions = async (pregnancyId: number, options?: RequestInit): Promise<SharedDecision[]> => {
+
+  return customFetch<SharedDecision[]>(getListDecisionsUrl(pregnancyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDecisionsQueryKey = (pregnancyId: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/decisions`
+    ] as const;
+    }
+
+
+export const getListDecisionsQueryOptions = <TData = Awaited<ReturnType<typeof listDecisions>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDecisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDecisionsQueryKey(pregnancyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDecisions>>> = ({ signal }) => listDecisions(pregnancyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDecisions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDecisionsQueryResult = NonNullable<Awaited<ReturnType<typeof listDecisions>>>
+export type ListDecisionsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List a pregnancy's Shared Decisions the member can see (all public, plus own private)
+ */
+
+export function useListDecisions<TData = Awaited<ReturnType<typeof listDecisions>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDecisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDecisionsQueryOptions(pregnancyId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateDecisionUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/decisions`
+}
+
+/**
+ * @summary Open a new Shared Decision (defaults to Public)
+ */
+export const createDecision = async (pregnancyId: number,
+    decisionInput: DecisionInput, options?: RequestInit): Promise<SharedDecisionDetail> => {
+
+  return customFetch<SharedDecisionDetail>(getCreateDecisionUrl(pregnancyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(decisionInput)
+  }
+);}
+
+
+
+
+export const getCreateDecisionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDecision>>, TError,{pregnancyId: number;data: BodyType<DecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDecision>>, TError,{pregnancyId: number;data: BodyType<DecisionInput>}, TContext> => {
+
+const mutationKey = ['createDecision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDecision>>, {pregnancyId: number;data: BodyType<DecisionInput>}> = (props) => {
+          const {pregnancyId,data} = props ?? {};
+
+          return  createDecision(pregnancyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDecisionMutationResult = NonNullable<Awaited<ReturnType<typeof createDecision>>>
+    export type CreateDecisionMutationBody = BodyType<DecisionInput>
+    export type CreateDecisionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Open a new Shared Decision (defaults to Public)
+ */
+export const useCreateDecision = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDecision>>, TError,{pregnancyId: number;data: BodyType<DecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDecision>>,
+        TError,
+        {pregnancyId: number;data: BodyType<DecisionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateDecisionMutationOptions(options));
+    }
+
+export const getGetDecisionUrl = (pregnancyId: number,
+    decisionId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/decisions/${decisionId}`
+}
+
+/**
+ * @summary Get a Shared Decision with its chronological contributions
+ */
+export const getDecision = async (pregnancyId: number,
+    decisionId: number, options?: RequestInit): Promise<SharedDecisionDetail> => {
+
+  return customFetch<SharedDecisionDetail>(getGetDecisionUrl(pregnancyId,decisionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDecisionQueryKey = (pregnancyId: number,
+    decisionId: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/decisions/${decisionId}`
+    ] as const;
+    }
+
+
+export const getGetDecisionQueryOptions = <TData = Awaited<ReturnType<typeof getDecision>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number,
+    decisionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDecision>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDecisionQueryKey(pregnancyId,decisionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDecision>>> = ({ signal }) => getDecision(pregnancyId,decisionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined && decisionId !== null && decisionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDecision>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDecisionQueryResult = NonNullable<Awaited<ReturnType<typeof getDecision>>>
+export type GetDecisionQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a Shared Decision with its chronological contributions
+ */
+
+export function useGetDecision<TData = Awaited<ReturnType<typeof getDecision>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number,
+    decisionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDecision>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDecisionQueryOptions(pregnancyId,decisionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddContributionUrl = (pregnancyId: number,
+    decisionId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/decisions/${decisionId}/contributions`
+}
+
+/**
+ * @summary Add an authored contribution (makes the member a contributor)
+ */
+export const addContribution = async (pregnancyId: number,
+    decisionId: number,
+    contributionInput: ContributionInput, options?: RequestInit): Promise<SharedDecisionDetail> => {
+
+  return customFetch<SharedDecisionDetail>(getAddContributionUrl(pregnancyId,decisionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(contributionInput)
+  }
+);}
+
+
+
+
+export const getAddContributionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addContribution>>, TError,{pregnancyId: number;decisionId: number;data: BodyType<ContributionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addContribution>>, TError,{pregnancyId: number;decisionId: number;data: BodyType<ContributionInput>}, TContext> => {
+
+const mutationKey = ['addContribution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addContribution>>, {pregnancyId: number;decisionId: number;data: BodyType<ContributionInput>}> = (props) => {
+          const {pregnancyId,decisionId,data} = props ?? {};
+
+          return  addContribution(pregnancyId,decisionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddContributionMutationResult = NonNullable<Awaited<ReturnType<typeof addContribution>>>
+    export type AddContributionMutationBody = BodyType<ContributionInput>
+    export type AddContributionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Add an authored contribution (makes the member a contributor)
+ */
+export const useAddContribution = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addContribution>>, TError,{pregnancyId: number;decisionId: number;data: BodyType<ContributionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addContribution>>,
+        TError,
+        {pregnancyId: number;decisionId: number;data: BodyType<ContributionInput>},
+        TContext
+      > => {
+      return useMutation(getAddContributionMutationOptions(options));
+    }
+
+export const getCloseDecisionUrl = (pregnancyId: number,
+    decisionId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/decisions/${decisionId}/close`
+}
+
+/**
+ * @summary Record the final decision and close it (contributors only)
+ */
+export const closeDecision = async (pregnancyId: number,
+    decisionId: number,
+    closeDecisionInput: CloseDecisionInput, options?: RequestInit): Promise<SharedDecisionDetail> => {
+
+  return customFetch<SharedDecisionDetail>(getCloseDecisionUrl(pregnancyId,decisionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(closeDecisionInput)
+  }
+);}
+
+
+
+
+export const getCloseDecisionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeDecision>>, TError,{pregnancyId: number;decisionId: number;data: BodyType<CloseDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeDecision>>, TError,{pregnancyId: number;decisionId: number;data: BodyType<CloseDecisionInput>}, TContext> => {
+
+const mutationKey = ['closeDecision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeDecision>>, {pregnancyId: number;decisionId: number;data: BodyType<CloseDecisionInput>}> = (props) => {
+          const {pregnancyId,decisionId,data} = props ?? {};
+
+          return  closeDecision(pregnancyId,decisionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseDecisionMutationResult = NonNullable<Awaited<ReturnType<typeof closeDecision>>>
+    export type CloseDecisionMutationBody = BodyType<CloseDecisionInput>
+    export type CloseDecisionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record the final decision and close it (contributors only)
+ */
+export const useCloseDecision = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeDecision>>, TError,{pregnancyId: number;decisionId: number;data: BodyType<CloseDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeDecision>>,
+        TError,
+        {pregnancyId: number;decisionId: number;data: BodyType<CloseDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getCloseDecisionMutationOptions(options));
+    }
+
+export const getReopenDecisionUrl = (pregnancyId: number,
+    decisionId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/decisions/${decisionId}/reopen`
+}
+
+/**
+ * @summary Reopen a closed decision (contributors only); history is preserved
+ */
+export const reopenDecision = async (pregnancyId: number,
+    decisionId: number, options?: RequestInit): Promise<SharedDecisionDetail> => {
+
+  return customFetch<SharedDecisionDetail>(getReopenDecisionUrl(pregnancyId,decisionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getReopenDecisionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reopenDecision>>, TError,{pregnancyId: number;decisionId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reopenDecision>>, TError,{pregnancyId: number;decisionId: number}, TContext> => {
+
+const mutationKey = ['reopenDecision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reopenDecision>>, {pregnancyId: number;decisionId: number}> = (props) => {
+          const {pregnancyId,decisionId} = props ?? {};
+
+          return  reopenDecision(pregnancyId,decisionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReopenDecisionMutationResult = NonNullable<Awaited<ReturnType<typeof reopenDecision>>>
+
+    export type ReopenDecisionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Reopen a closed decision (contributors only); history is preserved
+ */
+export const useReopenDecision = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reopenDecision>>, TError,{pregnancyId: number;decisionId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reopenDecision>>,
+        TError,
+        {pregnancyId: number;decisionId: number},
+        TContext
+      > => {
+      return useMutation(getReopenDecisionMutationOptions(options));
     }
 
