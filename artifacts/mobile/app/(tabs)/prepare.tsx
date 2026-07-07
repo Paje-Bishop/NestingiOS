@@ -353,11 +353,23 @@ function DetailBlock({ label, body }: { label: string; body: string }) {
 
 // ─── Create task (Story 5) ────────────────────────────────────────────────────
 
-function CreateTaskForm({ pregnancyId, onDone }: { pregnancyId: number; onDone: () => void }) {
+function CreateTaskForm({
+  pregnancyId,
+  members,
+  onDone,
+}: {
+  pregnancyId: number;
+  members: PrepareMember[];
+  onDone: () => void;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
+  const [assignedMemberId, setAssignedMemberId] = useState<number | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [draft, setDraft] = useState("");
   const create = useCreateTask({
     mutation: {
       onSuccess: () => {
@@ -367,10 +379,39 @@ function CreateTaskForm({ pregnancyId, onDone }: { pregnancyId: number; onDone: 
     },
   });
 
+  const assigneeName =
+    members.find((m) => m.membershipId === assignedMemberId)?.personName ?? "Anyone";
+
+  function addItem() {
+    const label = draft.trim();
+    if (!label) return;
+    setItems((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, label, done: false },
+    ]);
+    setDraft("");
+  }
+
+  function removeItem(id: string) {
+    setItems((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  function submit() {
+    create.mutate({
+      pregnancyId,
+      data: {
+        title: title.trim(),
+        taskType: "together",
+        assignedMemberId: assignedMemberId ?? undefined,
+        checklist: items.length > 0 ? items : undefined,
+      },
+    });
+  }
+
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 24, paddingTop: Math.max(insets.top + 8, 44) }}
+      contentContainerStyle={{ padding: 24, paddingTop: Math.max(insets.top + 8, 44), paddingBottom: 60 }}
     >
       <TouchableOpacity accessibilityLabel="Cancel new task" onPress={onDone} style={styles.backRow}>
         <Feather name="chevron-left" size={22} color={colors.primary} />
@@ -388,9 +429,103 @@ function CreateTaskForm({ pregnancyId, onDone }: { pregnancyId: number; onDone: 
           { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground, fontFamily: fonts.sansRegular, minHeight: 52 },
         ]}
       />
+
+      <View style={styles.section}>
+        <Text style={[styles.eyebrow, { color: colors.mutedForeground, fontFamily: fonts.sansSemiBold }]}>
+          WHO IT&apos;S FOR
+        </Text>
+        <TouchableOpacity
+          accessibilityLabel="Choose who this task is for"
+          onPress={() => setPicking((v) => !v)}
+          style={[styles.assigneePill, { borderColor: colors.border }]}
+        >
+          <Feather name="user" size={16} color={colors.mutedForeground} />
+          <Text style={[styles.assigneeText, { color: colors.foreground, fontFamily: fonts.sansMedium }]}>
+            {assigneeName}
+          </Text>
+          <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        {picking ? (
+          <View style={styles.reassignList}>
+            {members.map((m) => (
+              <TouchableOpacity
+                key={m.membershipId}
+                accessibilityLabel={`Assign to ${m.personName}`}
+                onPress={() => {
+                  setAssignedMemberId(m.membershipId);
+                  setPicking(false);
+                }}
+                style={styles.reassignRow}
+              >
+                <Text style={[styles.assigneeText, { color: colors.foreground, fontFamily: fonts.sansRegular }]}>
+                  {m.personName}
+                </Text>
+                {assignedMemberId === m.membershipId ? (
+                  <Feather name="check" size={16} color={colors.primary} />
+                ) : null}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              accessibilityLabel="Anyone"
+              onPress={() => {
+                setAssignedMemberId(null);
+                setPicking(false);
+              }}
+              style={styles.reassignRow}
+            >
+              <Text style={[styles.assigneeText, { color: colors.mutedForeground, fontFamily: fonts.sansRegular }]}>
+                Anyone
+              </Text>
+              {assignedMemberId === null ? <Feather name="check" size={16} color={colors.primary} /> : null}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.eyebrow, { color: colors.mutedForeground, fontFamily: fonts.sansSemiBold }]}>
+          CHECKLIST
+        </Text>
+        {items.map((item) => (
+          <View key={item.id} style={styles.checkRow}>
+            <Feather name="square" size={20} color={colors.mutedForeground} />
+            <Text style={[styles.checkLabel, { color: colors.foreground, fontFamily: fonts.sansRegular }]}>
+              {item.label}
+            </Text>
+            <TouchableOpacity accessibilityLabel={`Remove ${item.label}`} onPress={() => removeItem(item.id)}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        ))}
+        <View style={styles.chkAddRow}>
+          <TextInput
+            accessibilityLabel="New checklist item"
+            value={draft}
+            onChangeText={setDraft}
+            onSubmitEditing={addItem}
+            returnKeyType="done"
+            blurOnSubmit={false}
+            placeholder="Add a sub-step…"
+            placeholderTextColor={colors.mutedForeground}
+            style={[
+              styles.chkInput,
+              { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground, fontFamily: fonts.sansRegular },
+            ]}
+          />
+          <TouchableOpacity
+            accessibilityLabel="Add checklist item"
+            onPress={addItem}
+            disabled={draft.trim().length === 0}
+            style={[styles.chkAddBtn, { backgroundColor: colors.primary, opacity: draft.trim().length === 0 ? 0.5 : 1 }]}
+          >
+            <Feather name="plus" size={20} color={colors.primaryForeground} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <TouchableOpacity
         accessibilityLabel="Save task"
-        onPress={() => create.mutate({ pregnancyId, data: { title: title.trim(), taskType: "together" } })}
+        onPress={submit}
         disabled={title.trim().length === 0 || create.isPending}
         style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: title.trim().length === 0 ? 0.5 : 1 }]}
       >
@@ -711,7 +846,13 @@ export default function PrepareScreen() {
     }
   }
   if (creatingTask) {
-    return <CreateTaskForm pregnancyId={pregnancyId} onDone={() => setCreatingTask(false)} />;
+    return (
+      <CreateTaskForm
+        pregnancyId={pregnancyId}
+        members={view?.members ?? []}
+        onDone={() => setCreatingTask(false)}
+      />
+    );
   }
   if (selectedDecisionId != null) {
     return (
@@ -900,6 +1041,9 @@ const styles = StyleSheet.create({
   assigneeText: { fontSize: 15 },
   reassignList: { marginTop: 8, gap: 2 },
   reassignRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: 4 },
+  chkAddRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
+  chkInput: { flex: 1, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
+  chkAddBtn: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   notesInput: { borderRadius: 14, borderWidth: 1, padding: 14, fontSize: 15, minHeight: 80, textAlignVertical: "top", marginTop: 4 },
   momentum: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 20, padding: 14, borderRadius: 14, borderWidth: 1 },
   momentumText: { fontSize: 15, flex: 1 },
