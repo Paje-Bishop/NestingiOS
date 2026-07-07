@@ -9,8 +9,17 @@ export const pregnanciesTable = pgTable("pregnancies", {
   dueDate: date("due_date", { mode: "string" }),
   // "exact" | "approximate_month" | "unknown"
   dueDatePrecision: text("due_date_precision").notNull().default("unknown"),
-  // "active" | "archived"
+  // Canonical lifecycle state per the Lifecycle Transition Contract:
+  // "active" | "in_labor" | "completed" | "ended_early". Archive is NOT a status
+  // here — it lives on Membership. Transitions are gated by the lifecycle service.
   status: text("status").notNull().default("active"),
+  // Birth details, populated only on the complete_pregnancy transition.
+  birthDate: date("birth_date", { mode: "string" }),
+  // Wall-clock local time "HH:MM" plus an IANA zone (e.g. "America/Chicago"), so
+  // the recorded birth moment is unambiguous regardless of where it's read.
+  birthTime: text("birth_time"),
+  birthTimeZone: text("birth_time_zone"),
+  babyName: text("baby_name"),
   // Short code anyone with the link may use to join
   joinCode: text("join_code").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

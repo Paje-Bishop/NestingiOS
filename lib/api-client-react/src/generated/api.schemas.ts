@@ -596,3 +596,139 @@ export interface CloseDecisionInput {
   finalRationale?: string;
 }
 
+export type DecisionVisibilityInputVisibility = typeof DecisionVisibilityInputVisibility[keyof typeof DecisionVisibilityInputVisibility];
+
+
+export const DecisionVisibilityInputVisibility = {
+  public: 'public',
+  private: 'private',
+} as const;
+
+export interface DecisionVisibilityInput {
+  visibility: DecisionVisibilityInputVisibility;
+}
+
+export type LifecycleTransitionInputCommand = typeof LifecycleTransitionInputCommand[keyof typeof LifecycleTransitionInputCommand];
+
+
+export const LifecycleTransitionInputCommand = {
+  set_in_labor: 'set_in_labor',
+  revert_to_active: 'revert_to_active',
+  complete_pregnancy: 'complete_pregnancy',
+  end_pregnancy_early: 'end_pregnancy_early',
+} as const;
+
+/**
+ * Defaults to private
+ */
+export type LifecycleTransitionInputFirstMemoryVisibility = typeof LifecycleTransitionInputFirstMemoryVisibility[keyof typeof LifecycleTransitionInputFirstMemoryVisibility];
+
+
+export const LifecycleTransitionInputFirstMemoryVisibility = {
+  public: 'public',
+  private: 'private',
+} as const;
+
+export interface LifecycleTransitionInput {
+  command: LifecycleTransitionInputCommand;
+  /** Recommended for complete_pregnancy; makes retries safe */
+  idempotencyKey?: string;
+  /** Required for complete_pregnancy (YYYY-MM-DD) */
+  birthDate?: string;
+  /** Optional wall-clock local time HH:MM */
+  birthTime?: string;
+  /** Optional IANA zone, e.g. America/Chicago */
+  birthTimeZone?: string;
+  babyName?: string;
+  /** Optional Birth Flow first memory */
+  firstMemoryText?: string;
+  /** Defaults to private */
+  firstMemoryVisibility?: LifecycleTransitionInputFirstMemoryVisibility;
+  /** Required true for end_pregnancy_early */
+  confirmation?: boolean;
+}
+
+export type LifecycleTransitionResultPregnancyStatus = typeof LifecycleTransitionResultPregnancyStatus[keyof typeof LifecycleTransitionResultPregnancyStatus];
+
+
+export const LifecycleTransitionResultPregnancyStatus = {
+  active: 'active',
+  in_labor: 'in_labor',
+  completed: 'completed',
+  ended_early: 'ended_early',
+} as const;
+
+export type LifecycleTransitionResultPregnancy = {
+  id: number;
+  status: LifecycleTransitionResultPregnancyStatus;
+  /** @nullable */
+  birthDate?: string | null;
+  /** @nullable */
+  birthTime?: string | null;
+  /** @nullable */
+  birthTimeZone?: string | null;
+  /** @nullable */
+  babyName?: string | null;
+  updatedAt: string;
+};
+
+export type LifecycleTransitionResultTransitionFrom = typeof LifecycleTransitionResultTransitionFrom[keyof typeof LifecycleTransitionResultTransitionFrom];
+
+
+export const LifecycleTransitionResultTransitionFrom = {
+  active: 'active',
+  in_labor: 'in_labor',
+  completed: 'completed',
+  ended_early: 'ended_early',
+} as const;
+
+export type LifecycleTransitionResultTransitionTo = typeof LifecycleTransitionResultTransitionTo[keyof typeof LifecycleTransitionResultTransitionTo];
+
+
+export const LifecycleTransitionResultTransitionTo = {
+  active: 'active',
+  in_labor: 'in_labor',
+  completed: 'completed',
+  ended_early: 'ended_early',
+} as const;
+
+export type LifecycleTransitionResultTransition = {
+  from: LifecycleTransitionResultTransitionFrom;
+  to: LifecycleTransitionResultTransitionTo;
+  /** False when the request was an idempotent no-op */
+  applied: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type LifecycleTransitionResultLaborSession = {
+  id?: number;
+} | null;
+
+export interface LifecycleTransitionResult {
+  pregnancy: LifecycleTransitionResultPregnancy;
+  transition: LifecycleTransitionResultTransition;
+  /** @nullable */
+  laborSession?: LifecycleTransitionResultLaborSession;
+  /** @nullable */
+  memoryId?: number | null;
+}
+
+export type MembershipArchiveStateStatus = typeof MembershipArchiveStateStatus[keyof typeof MembershipArchiveStateStatus];
+
+
+export const MembershipArchiveStateStatus = {
+  active: 'active',
+  archived: 'archived',
+  left: 'left',
+  removed: 'removed',
+} as const;
+
+export interface MembershipArchiveState {
+  membershipId: number;
+  status: MembershipArchiveStateStatus;
+  /** @nullable */
+  archivedAt?: string | null;
+}
+

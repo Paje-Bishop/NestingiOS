@@ -882,6 +882,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateDecisionVisibility
+      tags: [prepare]
+      summary: Change a Shared Decision's visibility (any active member who can see it)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionVisibilityInput"
+      responses:
+        "200":
+          description: Updated decision detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDecisionDetail"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not visible to this member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Decision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /pregnancies/{pregnancyId}/decisions/{decisionId}/contributions:
     post:
@@ -1034,6 +1088,129 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Decision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/lifecycle-transitions:
+    post:
+      operationId: transitionLifecycle
+      tags: [lifecycle]
+      summary: Apply a canonical Pregnancy lifecycle transition
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LifecycleTransitionInput"
+      responses:
+        "200":
+          description: Transition applied (or idempotent no-op)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LifecycleTransitionResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not an active member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition not allowed from the current status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Missing required data for the requested command
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/membership/archive:
+    post:
+      operationId: archiveMembership
+      tags: [lifecycle]
+      summary: Archive the caller's own membership (per-member switcher/notifications)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Membership archive state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipArchiveState"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/membership/unarchive:
+    post:
+      operationId: unarchiveMembership
+      tags: [lifecycle]
+      summary: Restore the caller's own membership from archived to active
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Membership archive state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipArchiveState"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
           content:
             application/json:
               schema:
@@ -1785,3 +1962,105 @@ components:
           type: string
         finalRationale:
           type: string
+
+    DecisionVisibilityInput:
+      type: object
+      required: [visibility]
+      properties:
+        visibility:
+          type: string
+          enum: [public, private]
+
+    # ── Pregnancy lifecycle ───────────────────────────────────────────────────
+
+    LifecycleTransitionInput:
+      type: object
+      required: [command]
+      properties:
+        command:
+          type: string
+          enum: [set_in_labor, revert_to_active, complete_pregnancy, end_pregnancy_early]
+        idempotencyKey:
+          type: string
+          description: Recommended for complete_pregnancy; makes retries safe
+        birthDate:
+          type: string
+          format: date
+          description: Required for complete_pregnancy (YYYY-MM-DD)
+        birthTime:
+          type: string
+          description: Optional wall-clock local time HH:MM
+        birthTimeZone:
+          type: string
+          description: Optional IANA zone, e.g. America/Chicago
+        babyName:
+          type: string
+        firstMemoryText:
+          type: string
+          description: Optional Birth Flow first memory
+        firstMemoryVisibility:
+          type: string
+          enum: [public, private]
+          description: Defaults to private
+        confirmation:
+          type: boolean
+          description: Required true for end_pregnancy_early
+
+    LifecycleTransitionResult:
+      type: object
+      required: [pregnancy, transition]
+      properties:
+        pregnancy:
+          type: object
+          required: [id, status, updatedAt]
+          properties:
+            id:
+              type: integer
+            status:
+              type: string
+              enum: [active, in_labor, completed, ended_early]
+            birthDate:
+              type: ["string", "null"]
+              format: date
+            birthTime:
+              type: ["string", "null"]
+            birthTimeZone:
+              type: ["string", "null"]
+            babyName:
+              type: ["string", "null"]
+            updatedAt:
+              type: string
+              format: date-time
+        transition:
+          type: object
+          required: [from, to, applied]
+          properties:
+            from:
+              type: string
+              enum: [active, in_labor, completed, ended_early]
+            to:
+              type: string
+              enum: [active, in_labor, completed, ended_early]
+            applied:
+              type: boolean
+              description: False when the request was an idempotent no-op
+        laborSession:
+          type: ["object", "null"]
+          properties:
+            id:
+              type: integer
+        memoryId:
+          type: ["integer", "null"]
+
+    MembershipArchiveState:
+      type: object
+      required: [membershipId, status]
+      properties:
+        membershipId:
+          type: integer
+        status:
+          type: string
+          enum: [active, archived, left, removed]
+        archivedAt:
+          type: ["string", "null"]
+          format: date-time

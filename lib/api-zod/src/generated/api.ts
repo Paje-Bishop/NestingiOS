@@ -753,6 +753,47 @@ export const GetDecisionResponse = zod.object({
 
 
 /**
+ * @summary Change a Shared Decision's visibility (any active member who can see it)
+ */
+export const UpdateDecisionVisibilityParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "decisionId": zod.coerce.number()
+})
+
+export const UpdateDecisionVisibilityBody = zod.object({
+  "visibility": zod.enum(['public', 'private'])
+})
+
+export const UpdateDecisionVisibilityResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "title": zod.string(),
+  "prompt": zod.string().nullish(),
+  "status": zod.enum(['open', 'decision_recorded', 'closed']),
+  "visibility": zod.enum(['public', 'private']),
+  "finalDecision": zod.string().nullish(),
+  "finalRationale": zod.string().nullish(),
+  "closedByMembershipId": zod.number().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "relatedTaskId": zod.number().nullish(),
+  "createdByMembershipId": zod.number(),
+  "contributionCount": zod.number(),
+  "viewerIsContributor": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "contributions": zod.array(zod.object({
+  "id": zod.number(),
+  "sharedDecisionId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
  * @summary Add an authored contribution (makes the member a contributor)
  */
 export const AddContributionParams = zod.object({
@@ -870,5 +911,74 @@ export const ReopenDecisionResponse = zod.object({
   "createdAt": zod.coerce.date()
 }))
 }))
+
+
+/**
+ * @summary Apply a canonical Pregnancy lifecycle transition
+ */
+export const TransitionLifecycleParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const TransitionLifecycleBody = zod.object({
+  "command": zod.enum(['set_in_labor', 'revert_to_active', 'complete_pregnancy', 'end_pregnancy_early']),
+  "idempotencyKey": zod.string().optional().describe('Recommended for complete_pregnancy; makes retries safe'),
+  "birthDate": zod.coerce.date().optional().describe('Required for complete_pregnancy (YYYY-MM-DD)'),
+  "birthTime": zod.string().optional().describe('Optional wall-clock local time HH:MM'),
+  "birthTimeZone": zod.string().optional().describe('Optional IANA zone, e.g. America\/Chicago'),
+  "babyName": zod.string().optional(),
+  "firstMemoryText": zod.string().optional().describe('Optional Birth Flow first memory'),
+  "firstMemoryVisibility": zod.enum(['public', 'private']).optional().describe('Defaults to private'),
+  "confirmation": zod.boolean().optional().describe('Required true for end_pregnancy_early')
+})
+
+export const TransitionLifecycleResponse = zod.object({
+  "pregnancy": zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['active', 'in_labor', 'completed', 'ended_early']),
+  "birthDate": zod.coerce.date().nullish(),
+  "birthTime": zod.string().nullish(),
+  "birthTimeZone": zod.string().nullish(),
+  "babyName": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+}),
+  "transition": zod.object({
+  "from": zod.enum(['active', 'in_labor', 'completed', 'ended_early']),
+  "to": zod.enum(['active', 'in_labor', 'completed', 'ended_early']),
+  "applied": zod.boolean().describe('False when the request was an idempotent no-op')
+}),
+  "laborSession": zod.object({
+  "id": zod.number().optional()
+}).nullish(),
+  "memoryId": zod.number().nullish()
+})
+
+
+/**
+ * @summary Archive the caller's own membership (per-member switcher/notifications)
+ */
+export const ArchiveMembershipParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const ArchiveMembershipResponse = zod.object({
+  "membershipId": zod.number(),
+  "status": zod.enum(['active', 'archived', 'left', 'removed']),
+  "archivedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Restore the caller's own membership from archived to active
+ */
+export const UnarchiveMembershipParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const UnarchiveMembershipResponse = zod.object({
+  "membershipId": zod.number(),
+  "status": zod.enum(['active', 'archived', 'left', 'removed']),
+  "archivedAt": zod.coerce.date().nullish()
+})
 
 
