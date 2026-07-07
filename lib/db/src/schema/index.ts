@@ -5,3 +5,6 @@ export * from "./invitations";
 export * from "./sessions";
 export * from "./phone_verifications";
 export * from "./analytics_events";
+export * from "./journey_weeks";
+export * from "./memory_prompts";
+export * from "./memories";

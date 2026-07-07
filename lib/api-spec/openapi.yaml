@@ -20,6 +20,10 @@ tags:
     description: Invitation management
   - name: analytics
     description: Event tracking
+  - name: journey
+    description: Week-by-week pregnancy journey content
+  - name: memories
+    description: Member memories and journal entries
 
 paths:
   /healthz:
@@ -422,6 +426,123 @@ paths:
         "204":
           description: Event recorded
 
+  /pregnancies/{pregnancyId}/journey/current:
+    get:
+      operationId: getCurrentJourneyWeek
+      tags: [journey]
+      summary: Get the current-week Journey view, role-aware, with the member's journal slot
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Current-week Journey view for the viewing member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyCurrentWeek"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pregnancies/{pregnancyId}/memories:
+    get:
+      operationId: listMemories
+      tags: [memories]
+      summary: List memories visible to the member (own + others' public), newest first
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Memories visible to the viewing member
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Memory"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createMemory
+      tags: [memories]
+      summary: Publish a memory — a journal reflection or a standalone photo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryInput"
+      responses:
+        "201":
+          description: Created memory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Memory"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A journal entry already exists for this week
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -767,3 +888,138 @@ components:
         properties:
           type: object
           additionalProperties: true
+
+    # ── Journey ───────────────────────────────────────────────────────────────
+
+    JourneyWeekContent:
+      type: object
+      required: [weekNumber, yourBaby, role]
+      properties:
+        weekNumber:
+          type: integer
+        yourBaby:
+          type: string
+          description: Shared baby-development content, identical for all roles
+        milestones:
+          type: ["string", "null"]
+        commonExperiences:
+          type: ["string", "null"]
+        roleContent:
+          type: ["string", "null"]
+          description: Role-resolved framing (pregnant-person or supporter variant)
+        isThisCommon:
+          type: ["string", "null"]
+        role:
+          type: string
+          description: The role used to resolve role-specific content
+          enum: [pregnant_person, supporter]
+
+    MemoryPromptOption:
+      type: object
+      required: [id, promptText]
+      properties:
+        id:
+          type: integer
+        promptText:
+          type: string
+
+    JournalSlot:
+      type: object
+      required: [published, eligiblePrompts]
+      properties:
+        published:
+          type: boolean
+          description: True once this member has published their journal entry for the week
+        memory:
+          oneOf:
+            - $ref: "#/components/schemas/Memory"
+            - type: "null"
+        defaultPrompt:
+          oneOf:
+            - $ref: "#/components/schemas/MemoryPromptOption"
+            - type: "null"
+        eligiblePrompts:
+          type: array
+          description: The full eligible pool for the prompt picker
+          items:
+            $ref: "#/components/schemas/MemoryPromptOption"
+
+    JourneyCurrentWeek:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          description: ok = week resolved; needs_due_date = no timing; approximate = month-only
+          enum: [ok, needs_due_date, approximate]
+        weekNumber:
+          type: ["integer", "null"]
+        content:
+          oneOf:
+            - $ref: "#/components/schemas/JourneyWeekContent"
+            - type: "null"
+        journal:
+          oneOf:
+            - $ref: "#/components/schemas/JournalSlot"
+            - type: "null"
+
+    # ── Memories ──────────────────────────────────────────────────────────────
+
+    Memory:
+      type: object
+      required: [id, pregnancyId, authorMembershipId, authorName, sourceType, visibility, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        pregnancyId:
+          type: integer
+        authorMembershipId:
+          type: integer
+        authorName:
+          type: string
+        sourceType:
+          type: string
+          enum: [manual, journey_prompt, shared_decision, milestone, task_completion, labor_update, birth_flow]
+        text:
+          type: ["string", "null"]
+        photoUrls:
+          type: ["array", "null"]
+          items:
+            type: string
+        journeyWeekNumber:
+          type: ["integer", "null"]
+        promptLibraryItemId:
+          type: ["integer", "null"]
+        visibility:
+          type: string
+          enum: [private, public]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MemoryInput:
+      type: object
+      required: [sourceType]
+      properties:
+        sourceType:
+          type: string
+          enum: [manual, journey_prompt]
+        text:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+        journeyWeekNumber:
+          type: integer
+          description: Required when sourceType is journey_prompt
+        promptLibraryItemId:
+          type: integer
+          description: The pool prompt the member published; required when journey_prompt
+        visibility:
+          type: string
+          enum: [private, public]
+          description: Defaults by sourceType — journey_prompt = private, manual = public
