@@ -11,20 +11,9 @@ import { and, asc, eq, gte, lte, notInArray, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 
 import { requireAuth } from "../middleware/auth";
+import { weekFromDueDate } from "../lib/journey-week";
 
 const router: IRouter = Router();
-
-// EDD is the start of week 40. Given a due date, the current gestational week is
-// 40 minus the number of whole weeks still remaining until the due date.
-function weekFromDueDate(dueDate: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate + "T00:00:00");
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const daysUntilDue = Math.round((due.getTime() - today.getTime()) / msPerDay);
-  const week = 40 - Math.floor(daysUntilDue / 7);
-  return Math.min(42, Math.max(1, week));
-}
 
 // GET /pregnancies/:pregnancyId/journey/current
 router.get(
