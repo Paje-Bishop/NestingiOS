@@ -30,8 +30,11 @@ import type {
   InvitationDetail,
   InvitationInput,
   InvitationWithLink,
+  JourneyCurrentWeek,
   MeResponse,
   MembershipResult,
+  Memory,
+  MemoryInput,
   Person,
   PersonUpdate,
   PhoneInput,
@@ -1087,5 +1090,230 @@ export const useTrackEvent = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getTrackEventMutationOptions(options));
+    }
+
+export const getGetCurrentJourneyWeekUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/journey/current`
+}
+
+/**
+ * @summary Get the current-week Journey view, role-aware, with the member's journal slot
+ */
+export const getCurrentJourneyWeek = async (pregnancyId: number, options?: RequestInit): Promise<JourneyCurrentWeek> => {
+
+  return customFetch<JourneyCurrentWeek>(getGetCurrentJourneyWeekUrl(pregnancyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentJourneyWeekQueryKey = (pregnancyId: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/journey/current`
+    ] as const;
+    }
+
+
+export const getGetCurrentJourneyWeekQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentJourneyWeek>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentJourneyWeek>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentJourneyWeekQueryKey(pregnancyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentJourneyWeek>>> = ({ signal }) => getCurrentJourneyWeek(pregnancyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentJourneyWeek>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentJourneyWeekQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentJourneyWeek>>>
+export type GetCurrentJourneyWeekQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the current-week Journey view, role-aware, with the member's journal slot
+ */
+
+export function useGetCurrentJourneyWeek<TData = Awaited<ReturnType<typeof getCurrentJourneyWeek>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentJourneyWeek>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentJourneyWeekQueryOptions(pregnancyId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMemoriesUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/memories`
+}
+
+/**
+ * @summary List memories visible to the member (own + others' public), newest first
+ */
+export const listMemories = async (pregnancyId: number, options?: RequestInit): Promise<Memory[]> => {
+
+  return customFetch<Memory[]>(getListMemoriesUrl(pregnancyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMemoriesQueryKey = (pregnancyId: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/memories`
+    ] as const;
+    }
+
+
+export const getListMemoriesQueryOptions = <TData = Awaited<ReturnType<typeof listMemories>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMemoriesQueryKey(pregnancyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMemories>>> = ({ signal }) => listMemories(pregnancyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMemories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMemoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listMemories>>>
+export type ListMemoriesQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List memories visible to the member (own + others' public), newest first
+ */
+
+export function useListMemories<TData = Awaited<ReturnType<typeof listMemories>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMemoriesQueryOptions(pregnancyId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMemoryUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/memories`
+}
+
+/**
+ * @summary Publish a memory — a journal reflection or a standalone photo
+ */
+export const createMemory = async (pregnancyId: number,
+    memoryInput: MemoryInput, options?: RequestInit): Promise<Memory> => {
+
+  return customFetch<Memory>(getCreateMemoryUrl(pregnancyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(memoryInput)
+  }
+);}
+
+
+
+
+export const getCreateMemoryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMemory>>, TError,{pregnancyId: number;data: BodyType<MemoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMemory>>, TError,{pregnancyId: number;data: BodyType<MemoryInput>}, TContext> => {
+
+const mutationKey = ['createMemory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMemory>>, {pregnancyId: number;data: BodyType<MemoryInput>}> = (props) => {
+          const {pregnancyId,data} = props ?? {};
+
+          return  createMemory(pregnancyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMemoryMutationResult = NonNullable<Awaited<ReturnType<typeof createMemory>>>
+    export type CreateMemoryMutationBody = BodyType<MemoryInput>
+    export type CreateMemoryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Publish a memory — a journal reflection or a standalone photo
+ */
+export const useCreateMemory = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMemory>>, TError,{pregnancyId: number;data: BodyType<MemoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMemory>>,
+        TError,
+        {pregnancyId: number;data: BodyType<MemoryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMemoryMutationOptions(options));
     }
 

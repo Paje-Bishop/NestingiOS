@@ -225,3 +225,139 @@ export interface AnalyticsInput {
   properties?: AnalyticsInputProperties;
 }
 
+/**
+ * The role used to resolve role-specific content
+ */
+export type JourneyWeekContentRole = typeof JourneyWeekContentRole[keyof typeof JourneyWeekContentRole];
+
+
+export const JourneyWeekContentRole = {
+  pregnant_person: 'pregnant_person',
+  supporter: 'supporter',
+} as const;
+
+export interface JourneyWeekContent {
+  weekNumber: number;
+  /** Shared baby-development content, identical for all roles */
+  yourBaby: string;
+  /** @nullable */
+  milestones?: string | null;
+  /** @nullable */
+  commonExperiences?: string | null;
+  /**
+     * Role-resolved framing (pregnant-person or supporter variant)
+     * @nullable
+     */
+  roleContent?: string | null;
+  /** @nullable */
+  isThisCommon?: string | null;
+  /** The role used to resolve role-specific content */
+  role: JourneyWeekContentRole;
+}
+
+export interface MemoryPromptOption {
+  id: number;
+  promptText: string;
+}
+
+export type MemorySourceType = typeof MemorySourceType[keyof typeof MemorySourceType];
+
+
+export const MemorySourceType = {
+  manual: 'manual',
+  journey_prompt: 'journey_prompt',
+  shared_decision: 'shared_decision',
+  milestone: 'milestone',
+  task_completion: 'task_completion',
+  labor_update: 'labor_update',
+  birth_flow: 'birth_flow',
+} as const;
+
+export type MemoryVisibility = typeof MemoryVisibility[keyof typeof MemoryVisibility];
+
+
+export const MemoryVisibility = {
+  private: 'private',
+  public: 'public',
+} as const;
+
+export interface Memory {
+  id: number;
+  pregnancyId: number;
+  authorMembershipId: number;
+  authorName: string;
+  sourceType: MemorySourceType;
+  /** @nullable */
+  text?: string | null;
+  /** @nullable */
+  photoUrls?: string[] | null;
+  /** @nullable */
+  journeyWeekNumber?: number | null;
+  /** @nullable */
+  promptLibraryItemId?: number | null;
+  visibility: MemoryVisibility;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JournalSlot {
+  /** True once this member has published their journal entry for the week */
+  published: boolean;
+  memory?: Memory | null;
+  defaultPrompt?: MemoryPromptOption | null;
+  /** The full eligible pool for the prompt picker */
+  eligiblePrompts: MemoryPromptOption[];
+}
+
+/**
+ * ok = week resolved; needs_due_date = no timing; approximate = month-only
+ */
+export type JourneyCurrentWeekState = typeof JourneyCurrentWeekState[keyof typeof JourneyCurrentWeekState];
+
+
+export const JourneyCurrentWeekState = {
+  ok: 'ok',
+  needs_due_date: 'needs_due_date',
+  approximate: 'approximate',
+} as const;
+
+export interface JourneyCurrentWeek {
+  /** ok = week resolved; needs_due_date = no timing; approximate = month-only */
+  state: JourneyCurrentWeekState;
+  /** @nullable */
+  weekNumber?: number | null;
+  content?: JourneyWeekContent | null;
+  journal?: JournalSlot | null;
+}
+
+export type MemoryInputSourceType = typeof MemoryInputSourceType[keyof typeof MemoryInputSourceType];
+
+
+export const MemoryInputSourceType = {
+  manual: 'manual',
+  journey_prompt: 'journey_prompt',
+} as const;
+
+/**
+ * Defaults by sourceType — journey_prompt = private, manual = public
+ */
+export type MemoryInputVisibility = typeof MemoryInputVisibility[keyof typeof MemoryInputVisibility];
+
+
+export const MemoryInputVisibility = {
+  private: 'private',
+  public: 'public',
+} as const;
+
+export interface MemoryInput {
+  sourceType: MemoryInputSourceType;
+  text?: string;
+  photoUrls?: string[];
+  /** Required when sourceType is journey_prompt */
+  journeyWeekNumber?: number;
+  /** The pool prompt the member published; required when journey_prompt */
+  promptLibraryItemId?: number;
+  /** Defaults by sourceType — journey_prompt = private, manual = public */
+  visibility?: MemoryInputVisibility;
+}
+

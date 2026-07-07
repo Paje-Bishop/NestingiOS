@@ -328,3 +328,106 @@ export const TrackEventBody = zod.object({
 export const TrackEventResponse = zod.void()
 
 
+/**
+ * @summary Get the current-week Journey view, role-aware, with the member's journal slot
+ */
+export const GetCurrentJourneyWeekParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const GetCurrentJourneyWeekResponse = zod.object({
+  "state": zod.enum(['ok', 'needs_due_date', 'approximate']).describe('ok = week resolved; needs_due_date = no timing; approximate = month-only'),
+  "weekNumber": zod.number().nullish(),
+  "content": zod.union([zod.object({
+  "weekNumber": zod.number(),
+  "yourBaby": zod.string().describe('Shared baby-development content, identical for all roles'),
+  "milestones": zod.string().nullish(),
+  "commonExperiences": zod.string().nullish(),
+  "roleContent": zod.string().nullish().describe('Role-resolved framing (pregnant-person or supporter variant)'),
+  "isThisCommon": zod.string().nullish(),
+  "role": zod.enum(['pregnant_person', 'supporter']).describe('The role used to resolve role-specific content')
+}),zod.null()]).optional(),
+  "journal": zod.union([zod.object({
+  "published": zod.boolean().describe('True once this member has published their journal entry for the week'),
+  "memory": zod.union([zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "sourceType": zod.enum(['manual', 'journey_prompt', 'shared_decision', 'milestone', 'task_completion', 'labor_update', 'birth_flow']),
+  "text": zod.string().nullish(),
+  "photoUrls": zod.array(zod.string()).nullish(),
+  "journeyWeekNumber": zod.number().nullish(),
+  "promptLibraryItemId": zod.number().nullish(),
+  "visibility": zod.enum(['private', 'public']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]).optional(),
+  "defaultPrompt": zod.union([zod.object({
+  "id": zod.number(),
+  "promptText": zod.string()
+}),zod.null()]).optional(),
+  "eligiblePrompts": zod.array(zod.object({
+  "id": zod.number(),
+  "promptText": zod.string()
+})).describe('The full eligible pool for the prompt picker')
+}),zod.null()]).optional()
+})
+
+
+/**
+ * @summary List memories visible to the member (own + others' public), newest first
+ */
+export const ListMemoriesParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const ListMemoriesResponseItem = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "sourceType": zod.enum(['manual', 'journey_prompt', 'shared_decision', 'milestone', 'task_completion', 'labor_update', 'birth_flow']),
+  "text": zod.string().nullish(),
+  "photoUrls": zod.array(zod.string()).nullish(),
+  "journeyWeekNumber": zod.number().nullish(),
+  "promptLibraryItemId": zod.number().nullish(),
+  "visibility": zod.enum(['private', 'public']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMemoriesResponse = zod.array(ListMemoriesResponseItem)
+
+
+/**
+ * @summary Publish a memory — a journal reflection or a standalone photo
+ */
+export const CreateMemoryParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const CreateMemoryBody = zod.object({
+  "sourceType": zod.enum(['manual', 'journey_prompt']),
+  "text": zod.string().optional(),
+  "photoUrls": zod.array(zod.string()).optional(),
+  "journeyWeekNumber": zod.number().optional().describe('Required when sourceType is journey_prompt'),
+  "promptLibraryItemId": zod.number().optional().describe('The pool prompt the member published; required when journey_prompt'),
+  "visibility": zod.enum(['private', 'public']).optional().describe('Defaults by sourceType — journey_prompt = private, manual = public')
+})
+
+export const CreateMemoryResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "sourceType": zod.enum(['manual', 'journey_prompt', 'shared_decision', 'milestone', 'task_completion', 'labor_update', 'birth_flow']),
+  "text": zod.string().nullish(),
+  "photoUrls": zod.array(zod.string()).nullish(),
+  "journeyWeekNumber": zod.number().nullish(),
+  "promptLibraryItemId": zod.number().nullish(),
+  "visibility": zod.enum(['private', 'public']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
