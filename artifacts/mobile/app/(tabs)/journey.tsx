@@ -16,10 +16,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   getGetCurrentJourneyWeekQueryKey,
+  getGetJourneyWeekQueryKey,
   useCreateMemory,
   useGetCurrentJourneyWeek,
+  useGetJourneyWeek,
   type JournalSlot,
   type JourneyWeekContent,
+  type JourneyWeekView,
+  type Memory,
   type MemoryPromptOption,
 } from "@workspace/api-client-react";
 import { fonts } from "@/constants/fonts";
@@ -379,19 +383,118 @@ function CenteredMessage({ title, body }: { title: string; body: string }) {
   );
 }
 
+// ─── Week navigation (Story 4) ───────────────────────────────────────────────
+
+// Members may peek at most this many weeks ahead (headline only).
+const FUTURE_PREVIEW_WEEKS = 2;
+
+function WeekNav({
+  week,
+  currentWeek,
+  onChange,
+}: {
+  week: number;
+  currentWeek: number;
+  onChange: (week: number) => void;
+}) {
+  const colors = useColors();
+  const canPrev = week > 1;
+  const canNext = week < currentWeek + FUTURE_PREVIEW_WEEKS;
+
+  return (
+    <View style={styles.weekNav}>
+      <TouchableOpacity
+        onPress={() => canPrev && onChange(week - 1)}
+        disabled={!canPrev}
+        activeOpacity={0.6}
+        style={[styles.weekNavBtn, { borderColor: colors.border, opacity: canPrev ? 1 : 0.35 }]}
+        accessibilityLabel="Previous week"
+      >
+        <Feather name="chevron-left" size={20} color={colors.foreground} />
+      </TouchableOpacity>
+
+      <Text
+        style={[styles.weekNavLabel, { color: colors.mutedForeground, fontFamily: fonts.sansMedium }]}
+      >
+        {week === currentWeek ? "This week" : `Week ${week}`}
+      </Text>
+
+      <TouchableOpacity
+        onPress={() => canNext && onChange(week + 1)}
+        disabled={!canNext}
+        activeOpacity={0.6}
+        style={[styles.weekNavBtn, { borderColor: colors.border, opacity: canNext ? 1 : 0.35 }]}
+        accessibilityLabel="Next week"
+      >
+        <Feather name="chevron-right" size={20} color={colors.foreground} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function WeekMemories({ memories }: { memories: Memory[] }) {
+  const colors = useColors();
+  if (memories.length === 0) return null;
+  return (
+    <View style={styles.section}>
+      <Text
+        style={[styles.eyebrow, { color: colors.mutedForeground, fontFamily: fonts.sansSemiBold }]}
+      >
+        MEMORIES FROM THIS WEEK
+      </Text>
+      {memories.map((m) => (
+        <View
+          key={m.id}
+          style={[styles.journalCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        >
+          {m.text ? (
+            <Text
+              style={[
+                styles.reflectionText,
+                { color: colors.foreground, fontFamily: fonts.sansRegular },
+              ]}
+            >
+              {m.text}
+            </Text>
+          ) : null}
+          <Text
+            style={[styles.memoryAuthor, { color: colors.mutedForeground, fontFamily: fonts.sansMedium }]}
+          >
+            {m.authorName || "A member"}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function JourneyScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { currentPregnancyId } = useApp();
+  const pregnancyId = currentPregnancyId as number;
+
+  // viewedWeek === null means "the current week" (uses the /current endpoint, which
+  // owns the journal composer). Any other value browses via the week endpoint.
+  const [viewedWeek, setViewedWeek] = useState<number | null>(null);
 
   // The hook self-disables when pregnancyId is null/undefined.
-  const { data, isLoading, isError } = useGetCurrentJourneyWeek(currentPregnancyId as number);
+  const current = useGetCurrentJourneyWeek(pregnancyId);
+  const currentWeek = current.data?.weekNumber ?? null;
+  const isBrowsing = viewedWeek != null && viewedWeek !== currentWeek;
+
+  const browsed = useGetJourneyWeek(pregnancyId, viewedWeek ?? currentWeek ?? 1, {
+    query: {
+      enabled: isBrowsing && currentWeek != null,
+      queryKey: getGetJourneyWeekQueryKey(pregnancyId, viewedWeek ?? currentWeek ?? 1),
+    },
+  });
 
   const tabBarHeight = Platform.OS === "web" ? 84 : 80;
 
-  if (isLoading) {
+  if (current.isLoading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
@@ -399,7 +502,7 @@ export default function JourneyScreen() {
     );
   }
 
-  if (isError || !data) {
+  if (current.isError || !current.data) {
     return (
       <CenteredMessage
         title="Journey"
@@ -408,7 +511,7 @@ export default function JourneyScreen() {
     );
   }
 
-  if (data.state === "needs_due_date") {
+  if (current.data.state === "needs_due_date") {
     return (
       <CenteredMessage
         title="Journey"
@@ -416,6 +519,8 @@ export default function JourneyScreen() {
       />
     );
   }
+
+  const showBrowsed = isBrowsing && currentWeek != null;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -435,17 +540,106 @@ export default function JourneyScreen() {
           Journey
         </Text>
 
-        {data.content ? <WeekContent content={data.content} /> : null}
-
-        {data.journal && data.weekNumber != null ? (
-          <JournalSection
-            slot={data.journal}
-            weekNumber={data.weekNumber}
-            pregnancyId={currentPregnancyId as number}
+        {currentWeek != null ? (
+          <WeekNav
+            week={viewedWeek ?? currentWeek}
+            currentWeek={currentWeek}
+            onChange={(w) => setViewedWeek(w === currentWeek ? null : w)}
           />
         ) : null}
+
+        {showBrowsed ? (
+          <BrowsedWeek query={browsed} />
+        ) : (
+          <>
+            {current.data.state === "approximate" ? (
+              <View
+                style={[
+                  styles.approxBanner,
+                  { backgroundColor: colors.amberCard, borderColor: colors.amberCardBorder },
+                ]}
+              >
+                <Feather name="info" size={15} color={colors.amberCardForeground} />
+                <Text
+                  style={[
+                    styles.approxText,
+                    { color: colors.amberCardForeground, fontFamily: fonts.sansRegular },
+                  ]}
+                >
+                  This week is our best estimate from an approximate due date. Add an exact date in
+                  your pregnancy details to sharpen your week-by-week story.
+                </Text>
+              </View>
+            ) : null}
+
+            {current.data.content ? <WeekContent content={current.data.content} /> : null}
+
+            {current.data.journal && current.data.weekNumber != null ? (
+              <JournalSection
+                slot={current.data.journal}
+                weekNumber={current.data.weekNumber}
+                pregnancyId={pregnancyId}
+              />
+            ) : null}
+          </>
+        )}
       </ScrollView>
     </View>
+  );
+}
+
+function BrowsedWeek({ query }: { query: ReturnType<typeof useGetJourneyWeek> }) {
+  const colors = useColors();
+  const { isLoading, isError } = query;
+  const data = query.data as JourneyWeekView | undefined;
+
+  if (isLoading) {
+    return (
+      <View style={{ paddingVertical: 40 }}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <Text
+        style={[
+          styles.sub,
+          { color: colors.mutedForeground, fontFamily: fonts.sansRegular, textAlign: "left" },
+        ]}
+      >
+        We couldn't load that week just now.
+      </Text>
+    );
+  }
+
+  // Future week beyond the headline preview — nothing to show yet.
+  if (data.locked && !data.content) {
+    return (
+      <View style={[styles.reassureCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Feather name="lock" size={15} color={colors.mutedForeground} />
+        <Text style={[styles.reassureText, { color: colors.mutedForeground, fontFamily: fonts.sansRegular }]}>
+          This week is still ahead. It opens up as you get closer — one gentle step at a time.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      {data.relation === "future" ? (
+        <View style={[styles.reassureCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="eye" size={15} color={colors.mutedForeground} />
+          <Text style={[styles.reassureText, { color: colors.mutedForeground, fontFamily: fonts.sansRegular }]}>
+            A peek ahead. The rest of this week unfolds once you're there.
+          </Text>
+        </View>
+      ) : null}
+
+      {data.content ? <WeekContent content={data.content} /> : null}
+      <WeekMemories memories={data.memories} />
+    </>
   );
 }
 
@@ -508,6 +702,42 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     alignItems: "flex-start",
+  },
+  approxBanner: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+    marginBottom: 24,
+  },
+  approxText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  weekNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  weekNavBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weekNavLabel: {
+    fontSize: 14,
+    letterSpacing: 0.2,
+  },
+  memoryAuthor: {
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
   reassureText: {
     flex: 1,

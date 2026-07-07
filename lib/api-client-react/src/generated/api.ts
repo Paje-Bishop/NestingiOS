@@ -31,6 +31,7 @@ import type {
   InvitationInput,
   InvitationWithLink,
   JourneyCurrentWeek,
+  JourneyWeekView,
   MeResponse,
   MembershipResult,
   Memory,
@@ -1157,6 +1158,88 @@ export function useGetCurrentJourneyWeek<TData = Awaited<ReturnType<typeof getCu
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCurrentJourneyWeekQueryOptions(pregnancyId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetJourneyWeekUrl = (pregnancyId: number,
+    weekNumber: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/journey/week/${weekNumber}`
+}
+
+/**
+ * @summary Browse a specific Journey week (past condensed, future preview) with its memories
+ */
+export const getJourneyWeek = async (pregnancyId: number,
+    weekNumber: number, options?: RequestInit): Promise<JourneyWeekView> => {
+
+  return customFetch<JourneyWeekView>(getGetJourneyWeekUrl(pregnancyId,weekNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJourneyWeekQueryKey = (pregnancyId: number,
+    weekNumber: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/journey/week/${weekNumber}`
+    ] as const;
+    }
+
+
+export const getGetJourneyWeekQueryOptions = <TData = Awaited<ReturnType<typeof getJourneyWeek>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number,
+    weekNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJourneyWeek>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneyWeekQueryKey(pregnancyId,weekNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneyWeek>>> = ({ signal }) => getJourneyWeek(pregnancyId,weekNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined && weekNumber !== null && weekNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJourneyWeek>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJourneyWeekQueryResult = NonNullable<Awaited<ReturnType<typeof getJourneyWeek>>>
+export type GetJourneyWeekQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Browse a specific Journey week (past condensed, future preview) with its memories
+ */
+
+export function useGetJourneyWeek<TData = Awaited<ReturnType<typeof getJourneyWeek>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number,
+    weekNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJourneyWeek>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJourneyWeekQueryOptions(pregnancyId,weekNumber,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

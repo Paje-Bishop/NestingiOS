@@ -24,6 +24,8 @@ export * from './journeyCurrentWeek';
 export * from './journeyCurrentWeekState';
 export * from './journeyWeekContent';
 export * from './journeyWeekContentRole';
+export * from './journeyWeekView';
+export * from './journeyWeekViewRelation';
 export * from './membership';
 export * from './membershipResult';
 export * from './memberSummary';

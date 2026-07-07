@@ -459,6 +459,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pregnancies/{pregnancyId}/journey/week/{weekNumber}:
+    get:
+      operationId: getJourneyWeek
+      tags: [journey]
+      summary: Browse a specific Journey week (past condensed, future preview) with its memories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: weekNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The requested week relative to the member's current week
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyWeekView"
+        "400":
+          description: Invalid week or timing not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /pregnancies/{pregnancyId}/memories:
     get:
       operationId: listMemories
@@ -962,6 +1006,31 @@ components:
           oneOf:
             - $ref: "#/components/schemas/JournalSlot"
             - type: "null"
+
+    JourneyWeekView:
+      type: object
+      required: [weekNumber, currentWeek, relation, locked, memories]
+      properties:
+        weekNumber:
+          type: integer
+        currentWeek:
+          type: integer
+          description: The member's resolved current week, for navigation bounds
+        relation:
+          type: string
+          enum: [past, current, future]
+        locked:
+          type: boolean
+          description: True for future weeks — role content, common experiences, and prompts are withheld
+        content:
+          oneOf:
+            - $ref: "#/components/schemas/JourneyWeekContent"
+            - type: "null"
+        memories:
+          type: array
+          description: This week's memories — the viewer's own plus others' public (empty for future)
+          items:
+            $ref: "#/components/schemas/Memory"
 
     # ── Memories ──────────────────────────────────────────────────────────────
 

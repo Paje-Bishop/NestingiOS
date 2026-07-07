@@ -376,6 +376,45 @@ export const GetCurrentJourneyWeekResponse = zod.object({
 
 
 /**
+ * @summary Browse a specific Journey week (past condensed, future preview) with its memories
+ */
+export const GetJourneyWeekParams = zod.object({
+  "pregnancyId": zod.coerce.number(),
+  "weekNumber": zod.coerce.number()
+})
+
+export const GetJourneyWeekResponse = zod.object({
+  "weekNumber": zod.number(),
+  "currentWeek": zod.number().describe('The member\'s resolved current week, for navigation bounds'),
+  "relation": zod.enum(['past', 'current', 'future']),
+  "locked": zod.boolean().describe('True for future weeks — role content, common experiences, and prompts are withheld'),
+  "content": zod.union([zod.object({
+  "weekNumber": zod.number(),
+  "yourBaby": zod.string().describe('Shared baby-development content, identical for all roles'),
+  "milestones": zod.string().nullish(),
+  "commonExperiences": zod.string().nullish(),
+  "roleContent": zod.string().nullish().describe('Role-resolved framing (pregnant-person or supporter variant)'),
+  "isThisCommon": zod.string().nullish(),
+  "role": zod.enum(['pregnant_person', 'supporter']).describe('The role used to resolve role-specific content')
+}),zod.null()]).optional(),
+  "memories": zod.array(zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "authorMembershipId": zod.number(),
+  "authorName": zod.string(),
+  "sourceType": zod.enum(['manual', 'journey_prompt', 'shared_decision', 'milestone', 'task_completion', 'labor_update', 'birth_flow']),
+  "text": zod.string().nullish(),
+  "photoUrls": zod.array(zod.string()).nullish(),
+  "journeyWeekNumber": zod.number().nullish(),
+  "promptLibraryItemId": zod.number().nullish(),
+  "visibility": zod.enum(['private', 'public']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})).describe('This week\'s memories — the viewer\'s own plus others\' public (empty for future)')
+})
+
+
+/**
  * @summary List memories visible to the member (own + others' public), newest first
  */
 export const ListMemoriesParams = zod.object({

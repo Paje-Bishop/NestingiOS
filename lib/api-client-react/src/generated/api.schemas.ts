@@ -330,6 +330,27 @@ export interface JourneyCurrentWeek {
   journal?: JournalSlot | null;
 }
 
+export type JourneyWeekViewRelation = typeof JourneyWeekViewRelation[keyof typeof JourneyWeekViewRelation];
+
+
+export const JourneyWeekViewRelation = {
+  past: 'past',
+  current: 'current',
+  future: 'future',
+} as const;
+
+export interface JourneyWeekView {
+  weekNumber: number;
+  /** The member's resolved current week, for navigation bounds */
+  currentWeek: number;
+  relation: JourneyWeekViewRelation;
+  /** True for future weeks — role content, common experiences, and prompts are withheld */
+  locked: boolean;
+  content?: JourneyWeekContent | null;
+  /** This week's memories — the viewer's own plus others' public (empty for future) */
+  memories: Memory[];
+}
+
 export type MemoryInputSourceType = typeof MemoryInputSourceType[keyof typeof MemoryInputSourceType];
 
 
