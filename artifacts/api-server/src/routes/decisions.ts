@@ -1,4 +1,9 @@
-import { AddContributionBody, CloseDecisionBody, CreateDecisionBody } from "@workspace/api-zod";
+import {
+  AddContributionBody,
+  CloseDecisionBody,
+  CreateDecisionBody,
+  UpdateDecisionVisibilityBody,
+} from "@workspace/api-zod";
 import {
   db,
   decisionContributionsTable,
@@ -79,6 +84,24 @@ async function loadViewer(pregnancyId: number, personId: number) {
   return viewer ?? null;
 }
 
+// Of the given decision ids, returns the set the viewer has contributed to.
+async function viewerContributedDecisionIds(
+  decisionIds: number[],
+  membershipId: number,
+): Promise<Set<number>> {
+  if (decisionIds.length === 0) return new Set();
+  const rows = await db
+    .select({ sharedDecisionId: decisionContributionsTable.sharedDecisionId })
+    .from(decisionContributionsTable)
+    .where(
+      and(
+        inArray(decisionContributionsTable.sharedDecisionId, decisionIds),
+        eq(decisionContributionsTable.authorMembershipId, membershipId),
+      ),
+    );
+  return new Set(rows.map((r) => r.sharedDecisionId));
+}
+
 // Fetches every contribution for the given decision ids, shaped with author name,
 // chronological — returns a map of decisionId -> contributions.
 async function loadContributions(decisionIds: number[]): Promise<Map<number, ContributionShape[]>> {
@@ -135,10 +158,15 @@ router.get(
       .where(eq(sharedDecisionsTable.pregnancyId, pregnancyId))
       .orderBy(asc(sharedDecisionsTable.createdAt));
 
-    // Public decisions are visible to everyone in the pregnancy; private ones only
-    // to their creator.
+    // Public decisions are visible to everyone in the pregnancy; a private one is
+    // visible to its creator and to any member who has contributed to it.
+    const privateIds = all.filter((d) => d.visibility === "private").map((d) => d.id);
+    const contributedIds = await viewerContributedDecisionIds(privateIds, viewer.membershipId);
     const visible = all.filter(
-      (d) => d.visibility === "public" || d.createdByMembershipId === viewer.membershipId,
+      (d) =>
+        d.visibility === "public" ||
+        d.createdByMembershipId === viewer.membershipId ||
+        contributedIds.has(d.id),
     );
     const contributions = await loadContributions(visible.map((d) => d.id));
 
@@ -195,6 +223,8 @@ router.post(
 );
 
 // Loads a decision scoped to the pregnancy and enforces private-visibility.
+// A private decision is visible to its creator and to any member who has
+// contributed to it (owner rule 2026-07-07) — not creator-only.
 async function loadVisibleDecision(
   pregnancyId: number,
   decisionId: number,
@@ -208,7 +238,9 @@ async function loadVisibleDecision(
     );
   if (!decision) return { decision: null, forbidden: false };
   if (decision.visibility === "private" && decision.createdByMembershipId !== viewerMembershipId) {
-    return { decision: null, forbidden: true };
+    if (!(await viewerIsContributor(decisionId, viewerMembershipId))) {
+      return { decision: null, forbidden: true };
+    }
   }
   return { decision, forbidden: false };
 }
@@ -243,6 +275,58 @@ router.get(
 
     const contributions = await loadContributions([decisionId]);
     res.json(shapeDecision(decision, viewer.membershipId, contributions.get(decisionId) ?? []));
+  },
+);
+
+// PATCH /pregnancies/:pregnancyId/decisions/:decisionId — change visibility.
+// Any active member who can see the decision may flip it public<->private
+// (owner rule 2026-07-07); it is not restricted to the creator.
+router.patch(
+  "/pregnancies/:pregnancyId/decisions/:decisionId",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const pregnancyId = parseInt(req.params.pregnancyId as string, 10);
+    const decisionId = parseInt(req.params.decisionId as string, 10);
+    if (isNaN(pregnancyId) || isNaN(decisionId)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+
+    const parsed = UpdateDecisionVisibilityBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+
+    const viewer = await loadViewer(pregnancyId, req.personId);
+    if (!viewer) {
+      res.status(403).json({ error: "Not a member of this pregnancy" });
+      return;
+    }
+
+    const { decision, forbidden } = await loadVisibleDecision(pregnancyId, decisionId, viewer.membershipId);
+    if (forbidden) {
+      res.status(403).json({ error: "Not visible to this member" });
+      return;
+    }
+    if (!decision) {
+      res.status(404).json({ error: "Decision not found" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(sharedDecisionsTable)
+      .set({ visibility: parsed.data.visibility, updatedAt: new Date() })
+      .where(eq(sharedDecisionsTable.id, decisionId))
+      .returning();
+
+    req.log.info(
+      { decisionId, pregnancyId, membershipId: viewer.membershipId, visibility: parsed.data.visibility },
+      "Shared decision visibility changed",
+    );
+
+    const contributions = await loadContributions([decisionId]);
+    res.json(shapeDecision(updated, viewer.membershipId, contributions.get(decisionId) ?? []));
   },
 );
 
