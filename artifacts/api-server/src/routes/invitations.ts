@@ -1,6 +1,7 @@
 import { AcceptInvitationBody, CreateInvitationBody } from "@workspace/api-zod";
 import {
   db,
+  familyProfilesTable,
   invitationsTable,
   membershipsTable,
   personsTable,
@@ -212,6 +213,14 @@ router.post("/invitations/:code/accept", requireAuth, async (req, res): Promise<
     }
   }
 
+  // FS-006 Story 6: seed this new member's notification prefs from the
+  // Pregnancy's FamilyProfile.notificationDefaults, once, at join. Existing
+  // members are never touched. If no defaults are set, the member starts unset.
+  const [familyProfile] = await db
+    .select({ notificationDefaults: familyProfilesTable.notificationDefaults })
+    .from(familyProfilesTable)
+    .where(eq(familyProfilesTable.pregnancyId, invitation.pregnancyId));
+
   const [membership] = await db
     .insert(membershipsTable)
     .values({
@@ -219,6 +228,7 @@ router.post("/invitations/:code/accept", requireAuth, async (req, res): Promise<
       pregnancyId: invitation.pregnancyId,
       role,
       invitationStatus: "active",
+      notificationPrefs: familyProfile?.notificationDefaults ?? null,
     })
     .returning();
 

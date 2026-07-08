@@ -13,3 +13,4 @@ export * from "./shared_decisions";
 export * from "./decision_contributions";
 export * from "./labor_sessions";
 export * from "./pregnancy_lifecycle_events";
+export * from "./family_profiles";

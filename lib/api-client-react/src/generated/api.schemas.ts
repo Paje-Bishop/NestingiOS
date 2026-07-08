@@ -608,6 +608,95 @@ export interface DecisionVisibilityInput {
   visibility: DecisionVisibilityInputVisibility;
 }
 
+export interface NotificationDefaults {
+  enabled?: boolean;
+  milestones?: boolean;
+  reminders?: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type FamilyProfileFeedingPreference = typeof FamilyProfileFeedingPreference[keyof typeof FamilyProfileFeedingPreference] | null;
+
+
+export const FamilyProfileFeedingPreference = {
+  breastfeeding: 'breastfeeding',
+  formula: 'formula',
+  combination: 'combination',
+  undecided: 'undecided',
+  prefer_not_to_say: 'prefer_not_to_say',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FamilyProfileHomeType = typeof FamilyProfileHomeType[keyof typeof FamilyProfileHomeType] | null;
+
+
+export const FamilyProfileHomeType = {
+  house: 'house',
+  apartment: 'apartment',
+  other: 'other',
+} as const;
+
+export interface FamilyProfile {
+  id: number;
+  pregnancyId: number;
+  /** @nullable */
+  feedingPreference?: FamilyProfileFeedingPreference;
+  /** @nullable */
+  homeType?: FamilyProfileHomeType;
+  /** @nullable */
+  limitedSpace?: boolean | null;
+  /** @nullable */
+  budgetGoal?: number | null;
+  notificationDefaults?: NotificationDefaults | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * @nullable
+ */
+export type FamilyProfileInputFeedingPreference = typeof FamilyProfileInputFeedingPreference[keyof typeof FamilyProfileInputFeedingPreference] | null;
+
+
+export const FamilyProfileInputFeedingPreference = {
+  breastfeeding: 'breastfeeding',
+  formula: 'formula',
+  combination: 'combination',
+  undecided: 'undecided',
+  prefer_not_to_say: 'prefer_not_to_say',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FamilyProfileInputHomeType = typeof FamilyProfileInputHomeType[keyof typeof FamilyProfileInputHomeType] | null;
+
+
+export const FamilyProfileInputHomeType = {
+  house: 'house',
+  apartment: 'apartment',
+  other: 'other',
+} as const;
+
+/**
+ * Partial update; omitted fields are unchanged, null clears a field.
+ */
+export interface FamilyProfileInput {
+  /** @nullable */
+  feedingPreference?: FamilyProfileInputFeedingPreference;
+  /** @nullable */
+  homeType?: FamilyProfileInputHomeType;
+  /** @nullable */
+  limitedSpace?: boolean | null;
+  /** @nullable */
+  budgetGoal?: number | null;
+  notificationDefaults?: NotificationDefaults | null;
+}
+
 export type LifecycleTransitionInputCommand = typeof LifecycleTransitionInputCommand[keyof typeof LifecycleTransitionInputCommand];
 
 

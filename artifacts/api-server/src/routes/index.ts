@@ -3,6 +3,7 @@ import { Router, type IRouter } from "express";
 import analyticsRouter from "./analytics";
 import authRouter from "./auth";
 import decisionsRouter from "./decisions";
+import familyProfileRouter from "./family-profile";
 import healthRouter from "./health";
 import invitationsRouter from "./invitations";
 import journeyRouter from "./journey";
@@ -23,6 +24,7 @@ router.use(journeyRouter);
 router.use(memoriesRouter);
 router.use(tasksRouter);
 router.use(decisionsRouter);
+router.use(familyProfileRouter);
 router.use(invitationsRouter);
 router.use(analyticsRouter);
 

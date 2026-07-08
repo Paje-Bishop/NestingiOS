@@ -24,6 +24,8 @@ tags:
     description: Week-by-week pregnancy journey content
   - name: memories
     description: Member memories and journal entries
+  - name: family-profile
+    description: Pregnancy-scoped personalization profile (FS-006)
 
 paths:
   /healthz:
@@ -1093,6 +1095,82 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pregnancies/{pregnancyId}/family-profile:
+    get:
+      operationId: getFamilyProfile
+      tags: [family-profile]
+      summary: Get the Pregnancy's Family Profile (created empty on first read)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Family profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateFamilyProfile
+      tags: [family-profile]
+      summary: Update Family Profile fields (partial; any active member)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FamilyProfileInput"
+      responses:
+        "200":
+          description: Updated family profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyProfile"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a member of this pregnancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /pregnancies/{pregnancyId}/lifecycle-transitions:
     post:
       operationId: transitionLifecycle
@@ -1970,6 +2048,66 @@ components:
         visibility:
           type: string
           enum: [public, private]
+
+    # ── Family Profile (FS-006) ───────────────────────────────────────────────
+
+    NotificationDefaults:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        milestones:
+          type: boolean
+        reminders:
+          type: boolean
+
+    FamilyProfile:
+      type: object
+      required: [id, pregnancyId]
+      properties:
+        id:
+          type: integer
+        pregnancyId:
+          type: integer
+        feedingPreference:
+          type: ["string", "null"]
+          enum: [breastfeeding, formula, combination, undecided, prefer_not_to_say, null]
+        homeType:
+          type: ["string", "null"]
+          enum: [house, apartment, other, null]
+        limitedSpace:
+          type: ["boolean", "null"]
+        budgetGoal:
+          type: ["integer", "null"]
+        notificationDefaults:
+          oneOf:
+            - $ref: "#/components/schemas/NotificationDefaults"
+            - type: "null"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FamilyProfileInput:
+      type: object
+      description: Partial update; omitted fields are unchanged, null clears a field.
+      properties:
+        feedingPreference:
+          type: ["string", "null"]
+          enum: [breastfeeding, formula, combination, undecided, prefer_not_to_say, null]
+        homeType:
+          type: ["string", "null"]
+          enum: [house, apartment, other, null]
+        limitedSpace:
+          type: ["boolean", "null"]
+        budgetGoal:
+          type: ["integer", "null"]
+        notificationDefaults:
+          oneOf:
+            - $ref: "#/components/schemas/NotificationDefaults"
+            - type: "null"
 
     # ── Pregnancy lifecycle ───────────────────────────────────────────────────
 

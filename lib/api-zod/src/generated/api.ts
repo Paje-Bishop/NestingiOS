@@ -914,6 +914,66 @@ export const ReopenDecisionResponse = zod.object({
 
 
 /**
+ * @summary Get the Pregnancy's Family Profile (created empty on first read)
+ */
+export const GetFamilyProfileParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const GetFamilyProfileResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "feedingPreference": zod.union([zod.literal('breastfeeding'),zod.literal('formula'),zod.literal('combination'),zod.literal('undecided'),zod.literal('prefer_not_to_say'),zod.literal(null)]).nullish(),
+  "homeType": zod.union([zod.literal('house'),zod.literal('apartment'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "limitedSpace": zod.boolean().nullish(),
+  "budgetGoal": zod.number().nullish(),
+  "notificationDefaults": zod.union([zod.object({
+  "enabled": zod.boolean().optional(),
+  "milestones": zod.boolean().optional(),
+  "reminders": zod.boolean().optional()
+}),zod.null()]).optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Update Family Profile fields (partial; any active member)
+ */
+export const UpdateFamilyProfileParams = zod.object({
+  "pregnancyId": zod.coerce.number()
+})
+
+export const UpdateFamilyProfileBody = zod.object({
+  "feedingPreference": zod.union([zod.literal('breastfeeding'),zod.literal('formula'),zod.literal('combination'),zod.literal('undecided'),zod.literal('prefer_not_to_say'),zod.literal(null)]).nullish(),
+  "homeType": zod.union([zod.literal('house'),zod.literal('apartment'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "limitedSpace": zod.boolean().nullish(),
+  "budgetGoal": zod.number().nullish(),
+  "notificationDefaults": zod.union([zod.object({
+  "enabled": zod.boolean().optional(),
+  "milestones": zod.boolean().optional(),
+  "reminders": zod.boolean().optional()
+}),zod.null()]).optional()
+}).describe('Partial update; omitted fields are unchanged, null clears a field.')
+
+export const UpdateFamilyProfileResponse = zod.object({
+  "id": zod.number(),
+  "pregnancyId": zod.number(),
+  "feedingPreference": zod.union([zod.literal('breastfeeding'),zod.literal('formula'),zod.literal('combination'),zod.literal('undecided'),zod.literal('prefer_not_to_say'),zod.literal(null)]).nullish(),
+  "homeType": zod.union([zod.literal('house'),zod.literal('apartment'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "limitedSpace": zod.boolean().nullish(),
+  "budgetGoal": zod.number().nullish(),
+  "notificationDefaults": zod.union([zod.object({
+  "enabled": zod.boolean().optional(),
+  "milestones": zod.boolean().optional(),
+  "reminders": zod.boolean().optional()
+}),zod.null()]).optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
  * @summary Apply a canonical Pregnancy lifecycle transition
  */
 export const TransitionLifecycleParams = zod.object({

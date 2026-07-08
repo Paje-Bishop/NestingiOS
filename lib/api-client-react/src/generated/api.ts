@@ -29,6 +29,8 @@ import type {
   DecisionVisibilityInput,
   DeclineResult,
   ErrorResponse,
+  FamilyProfile,
+  FamilyProfileInput,
   HealthStatus,
   InvitationAccept,
   InvitationDetail,
@@ -2235,6 +2237,154 @@ export const useReopenDecision = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getReopenDecisionMutationOptions(options));
+    }
+
+export const getGetFamilyProfileUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/family-profile`
+}
+
+/**
+ * @summary Get the Pregnancy's Family Profile (created empty on first read)
+ */
+export const getFamilyProfile = async (pregnancyId: number, options?: RequestInit): Promise<FamilyProfile> => {
+
+  return customFetch<FamilyProfile>(getGetFamilyProfileUrl(pregnancyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFamilyProfileQueryKey = (pregnancyId: number,) => {
+    return [
+    `/api/pregnancies/${pregnancyId}/family-profile`
+    ] as const;
+    }
+
+
+export const getGetFamilyProfileQueryOptions = <TData = Awaited<ReturnType<typeof getFamilyProfile>>, TError = ErrorType<ErrorResponse>>(pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFamilyProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFamilyProfileQueryKey(pregnancyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFamilyProfile>>> = ({ signal }) => getFamilyProfile(pregnancyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pregnancyId !== null && pregnancyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFamilyProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFamilyProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getFamilyProfile>>>
+export type GetFamilyProfileQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the Pregnancy's Family Profile (created empty on first read)
+ */
+
+export function useGetFamilyProfile<TData = Awaited<ReturnType<typeof getFamilyProfile>>, TError = ErrorType<ErrorResponse>>(
+ pregnancyId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFamilyProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFamilyProfileQueryOptions(pregnancyId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateFamilyProfileUrl = (pregnancyId: number,) => {
+
+
+
+
+  return `/api/pregnancies/${pregnancyId}/family-profile`
+}
+
+/**
+ * @summary Update Family Profile fields (partial; any active member)
+ */
+export const updateFamilyProfile = async (pregnancyId: number,
+    familyProfileInput: FamilyProfileInput, options?: RequestInit): Promise<FamilyProfile> => {
+
+  return customFetch<FamilyProfile>(getUpdateFamilyProfileUrl(pregnancyId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(familyProfileInput)
+  }
+);}
+
+
+
+
+export const getUpdateFamilyProfileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFamilyProfile>>, TError,{pregnancyId: number;data: BodyType<FamilyProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFamilyProfile>>, TError,{pregnancyId: number;data: BodyType<FamilyProfileInput>}, TContext> => {
+
+const mutationKey = ['updateFamilyProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFamilyProfile>>, {pregnancyId: number;data: BodyType<FamilyProfileInput>}> = (props) => {
+          const {pregnancyId,data} = props ?? {};
+
+          return  updateFamilyProfile(pregnancyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFamilyProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateFamilyProfile>>>
+    export type UpdateFamilyProfileMutationBody = BodyType<FamilyProfileInput>
+    export type UpdateFamilyProfileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update Family Profile fields (partial; any active member)
+ */
+export const useUpdateFamilyProfile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFamilyProfile>>, TError,{pregnancyId: number;data: BodyType<FamilyProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFamilyProfile>>,
+        TError,
+        {pregnancyId: number;data: BodyType<FamilyProfileInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateFamilyProfileMutationOptions(options));
     }
 
 export const getTransitionLifecycleUrl = (pregnancyId: number,) => {
