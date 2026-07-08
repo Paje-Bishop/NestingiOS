@@ -1,9 +1,17 @@
 import { CreateMemoryBody } from "@workspace/api-zod";
-import { db, membershipsTable, memoriesTable, personsTable } from "@workspace/db";
-import { and, desc, eq, or } from "drizzle-orm";
+import {
+  db,
+  membershipsTable,
+  memoriesTable,
+  memoryPromptsTable,
+  personsTable,
+  pregnanciesTable,
+} from "@workspace/db";
+import { and, desc, eq, gte, lte, notInArray, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 
 import { requireAuth } from "../middleware/auth";
+import { weekFromDueDate } from "../lib/journey-week";
 
 const router: IRouter = Router();
 
@@ -122,7 +130,11 @@ router.post(
     }
 
     const [membership] = await db
-      .select({ id: membershipsTable.id, displayName: personsTable.displayName })
+      .select({
+        id: membershipsTable.id,
+        role: membershipsTable.role,
+        displayName: personsTable.displayName,
+      })
       .from(membershipsTable)
       .innerJoin(personsTable, eq(membershipsTable.personId, personsTable.id))
       .where(
@@ -136,6 +148,95 @@ router.post(
     if (!membership) {
       res.status(403).json({ error: "Not a member of this pregnancy" });
       return;
+    }
+
+    // Journal entries (journey_prompt) may only be written against the member's
+    // current resolved week, from the eligible-and-unused prompt pool, once per
+    // week — mirroring what GET /journey/current offers. Freeform photo memories
+    // (other sourceTypes) skip all of this. Pregnancy-number targeting is a
+    // deliberate MVP deferral: memory_prompts.pregnancyNumberTarget exists, but
+    // Pregnancy carries no ordinal yet, so it isn't filtered on here.
+    if (body.sourceType === "journey_prompt") {
+      const [pregnancy] = await db
+        .select({
+          dueDate: pregnanciesTable.dueDate,
+          dueDatePrecision: pregnanciesTable.dueDatePrecision,
+        })
+        .from(pregnanciesTable)
+        .where(eq(pregnanciesTable.id, pregnancyId));
+
+      if (!pregnancy?.dueDate || pregnancy.dueDatePrecision === "unknown") {
+        res.status(422).json({ error: "Add a due date before journaling" });
+        return;
+      }
+
+      const currentWeek = weekFromDueDate(pregnancy.dueDate);
+      if (body.journeyWeekNumber !== currentWeek) {
+        res.status(422).json({
+          error: "You can only journal for your current week",
+          currentWeek,
+        });
+        return;
+      }
+
+      // One journal entry per member per week (checked before insert; the partial
+      // unique index below is the race-safe backstop).
+      const [already] = await db
+        .select({ id: memoriesTable.id })
+        .from(memoriesTable)
+        .where(
+          and(
+            eq(memoriesTable.authorMembershipId, membership.id),
+            eq(memoriesTable.pregnancyId, pregnancyId),
+            eq(memoriesTable.journeyWeekNumber, currentWeek),
+            eq(memoriesTable.sourceType, "journey_prompt"),
+          ),
+        );
+      if (already) {
+        res.status(409).json({ error: "You've already journaled for this week" });
+        return;
+      }
+
+      // A supplied prompt must be in this member's eligible-and-unused pool:
+      // role + week range, minus prompts they've already published.
+      if (body.promptLibraryItemId != null) {
+        const usedRows = await db
+          .select({ promptLibraryItemId: memoriesTable.promptLibraryItemId })
+          .from(memoriesTable)
+          .where(
+            and(
+              eq(memoriesTable.authorMembershipId, membership.id),
+              eq(memoriesTable.pregnancyId, pregnancyId),
+              eq(memoriesTable.sourceType, "journey_prompt"),
+            ),
+          );
+        const usedIds = usedRows
+          .map((r) => r.promptLibraryItemId)
+          .filter((id): id is number => id != null);
+
+        const eligibility = [
+          eq(memoryPromptsTable.id, body.promptLibraryItemId),
+          or(
+            eq(memoryPromptsTable.roleTarget, membership.role),
+            eq(memoryPromptsTable.roleTarget, "both"),
+          ),
+          lte(memoryPromptsTable.eligibleStartWeek, currentWeek),
+          gte(memoryPromptsTable.eligibleEndWeek, currentWeek),
+        ];
+        if (usedIds.length > 0) {
+          eligibility.push(notInArray(memoryPromptsTable.id, usedIds));
+        }
+
+        const [eligible] = await db
+          .select({ id: memoryPromptsTable.id })
+          .from(memoryPromptsTable)
+          .where(and(...eligibility));
+
+        if (!eligible) {
+          res.status(422).json({ error: "That prompt isn't available for you this week" });
+          return;
+        }
+      }
     }
 
     // Default visibility by source: journal reflections are private, standalone photos public

@@ -15,8 +15,16 @@ export const membershipsTable = pgTable("memberships", {
     .references(() => pregnanciesTable.id),
   // "pregnant_person" | "supporter"
   role: text("role").notNull(),
-  // "active" | "pending" | "declined"
+  // "active" | "pending" | "declined" — the invite/join lifecycle.
   invitationStatus: text("invitation_status").notNull().default("active"),
+  // Per-member placement/notification state, independent of the invite flow and
+  // of Pregnancy.status: "active" | "archived" | "left" | "removed". Archived only
+  // moves the pregnancy to the member's Archived switcher section and mutes their
+  // notifications; it never changes Pregnancy.status or other members. Only an
+  // "active" membership may initiate Pregnancy lifecycle transitions.
+  status: text("status").notNull().default("active"),
+  // Set when this member archives the pregnancy for themselves; cleared on unarchive.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   // JSON string: { enabled: boolean, milestones: boolean, reminders: boolean }
   notificationPrefs: text("notification_prefs"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

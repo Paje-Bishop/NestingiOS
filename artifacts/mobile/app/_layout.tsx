@@ -26,7 +26,7 @@ const queryClient = new QueryClient();
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-  : "http://localhost:80";
+  : "http://localhost:8080";
 
 function RootLayoutNav() {
   return (
